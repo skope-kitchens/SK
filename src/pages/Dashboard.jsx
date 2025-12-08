@@ -66,6 +66,7 @@ const Dashboard = () => {
             >
               Logout
             </button>
+            <button className="rounded-full border border-slate-200 bg-slate-50 px-4 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-100 transition-colors"><a href="/docs/NDA.pdf">NDA</a></button>
           </div>
         </header>
 
