@@ -24,7 +24,7 @@ const EligibilityForm = () => {
     wastageRisk: '',
     numberOfMenuItems: '',
     packagingType: '',
-    menuSupplyChainComplexity: '',
+    menuSupplyChainComplexity: [],
     launchCapex: '',
     launchCapexPieces: '',
     smallwaresNeeded: '',
@@ -74,7 +74,19 @@ const EligibilityForm = () => {
     setFormData(prev => {
       const current = Array.isArray(prev[name]) ? prev[name] : []
       const exists = current.includes(option)
-      const updated = exists ? current.filter(item => item !== option) : [...current, option]
+
+      // exclusive "None of the above" handling
+      if (option === 'None of the above') {
+        const updated = exists ? [] : ['None of the above']
+        return { ...prev, [name]: updated }
+      }
+
+      // if selecting a regular option, remove "None of the above" if present
+      const filtered = current.filter(item => item !== 'None of the above')
+      const updated = exists
+        ? filtered.filter(item => item !== option)
+        : [...filtered, option]
+
       return { ...prev, [name]: updated }
     })
 
@@ -129,14 +141,16 @@ const EligibilityForm = () => {
     if (!formData.packagingType) {
       newErrors.packagingType = 'Please select packaging type'
     }
-    if (!formData.menuSupplyChainComplexity.trim()) {
-      newErrors.menuSupplyChainComplexity = 'Please describe menu & supply chain complexity'
+    if (!formData.menuSupplyChainComplexity || formData.menuSupplyChainComplexity.length === 0) {
+      newErrors.menuSupplyChainComplexity = 'Please select at least one menu/supply chain complexity'
     }
-    if (!formData.launchCapex.trim()) {
-      newErrors.launchCapex = 'Please provide launch CAPEX amount'
+    if (formData.launchCapex !== 'yes' && formData.launchCapex !== 'no') {
+      newErrors.launchCapex = 'Please specify if additional kitchen equipment is needed'
     }
-    if (formData.launchCapexPieces === '' || formData.launchCapexPieces == null) {
-      newErrors.launchCapexPieces = 'Please select number of pieces required'
+    if (formData.launchCapex === 'yes') {
+      if (formData.launchCapexPieces === '' || formData.launchCapexPieces == null) {
+        newErrors.launchCapexPieces = 'Please select number of pieces required'
+      }
     }
     if (!formData.smallwaresCost.trim()) {
       newErrors.smallwaresCost = 'Please provide smallwares cost'
@@ -522,14 +536,28 @@ const EligibilityForm = () => {
                   <label className="block text-sm font-medium text-gray-900 mb-2">
                     Does your menu need extra staff, special ingredients, or minimum order sizes? *
                   </label>
-                  <textarea
-                    name="menuSupplyChainComplexity"
-                    value={formData.menuSupplyChainComplexity}
-                    onChange={handleChange}
-                    rows="3"
-                    className={`input-field ${errors.menuSupplyChainComplexity ? 'border-red-500' : ''}`}
-                    placeholder="Additional labour, MOQs, special order items, etc."
-                  />
+                  <div className="space-y-2">
+                    {[
+                      'Need Extra Staff',
+                      'Special Ingredients',
+                      'Minimum Order Size',
+                      'None of the above',
+                    ].map(option => (
+                      <label key={option} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={formData.menuSupplyChainComplexity.includes(option)}
+                          onChange={() => handleCheckboxChange('menuSupplyChainComplexity', option)}
+                          disabled={
+                            option !== 'None of the above' &&
+                            formData.menuSupplyChainComplexity.includes('None of the above')
+                          }
+                          className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 disabled:opacity-60"
+                        />
+                        <span className="text-sm text-gray-900">{option}</span>
+                      </label>
+                    ))}
+                  </div>
                   {errors.menuSupplyChainComplexity && (
                     <p className="mt-1 text-sm text-red-600">{errors.menuSupplyChainComplexity}</p>
                   )}
@@ -540,35 +568,56 @@ const EligibilityForm = () => {
                     <label className="block text-sm font-medium text-gray-900 mb-2">
                     Do we need to buy additional kitchen equipment for your brand? *
                     </label>
-                    <input
-                      type="text"
-                      name="launchCapex"
-                      value={formData.launchCapex}
-                      onChange={handleChange}
-                      className={`input-field ${errors.launchCapex ? 'border-red-500' : ''}`}
-                      placeholder="e.g., 50000, 1 lac, 100k"
-                    />
+                    <div className="flex space-x-6">
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="launchCapex"
+                          value="no"
+                          checked={formData.launchCapex === 'no'}
+                          onChange={handleChange}
+                          className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
+                        />
+                        <span className="text-sm text-gray-900">No</span>
+                      </label>
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="launchCapex"
+                          value="yes"
+                          checked={formData.launchCapex === 'yes'}
+                          onChange={handleChange}
+                          className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
+                        />
+                        <span className="text-sm text-gray-900">Yes</span>
+                      </label>
+                    </div>
                     {errors.launchCapex && (
                       <p className="mt-1 text-sm text-red-600">{errors.launchCapex}</p>
                     )}
-                    <label className="block text-sm font-medium text-gray-900 mb-2 mt-4">
-                      Number of pieces required *
-                    </label>
-                    <select
-                      name="launchCapexPieces"
-                      value={formData.launchCapexPieces}
-                      onChange={handleChange}
-                      className={`input-field ${errors.launchCapexPieces ? 'border-red-500' : ''}`}
-                    >
-                      <option value="">Select</option>
-                      <option value="0">0 pieces</option>
-                      <option value="1">1 piece</option>
-                      <option value="2">2 pieces</option>
-                      <option value="3">3 pieces</option>
-                      <option value="4">4 or more pieces</option>
-                    </select>
-                    {errors.launchCapexPieces && (
-                      <p className="mt-1 text-sm text-red-600">{errors.launchCapexPieces}</p>
+
+                    {formData.launchCapex === 'yes' && (
+                      <div className="mt-4">
+                        <label className="block text-sm font-medium text-gray-900 mb-2">
+                          Number of pieces required *
+                        </label>
+                        <select
+                          name="launchCapexPieces"
+                          value={formData.launchCapexPieces}
+                          onChange={handleChange}
+                          className={`input-field ${errors.launchCapexPieces ? 'border-red-500' : ''}`}
+                        >
+                          <option value="">Select</option>
+                          <option value="0">0 pieces</option>
+                          <option value="1">1 piece</option>
+                          <option value="2">2 pieces</option>
+                          <option value="3">3 pieces</option>
+                          <option value="4">4 or more pieces</option>
+                        </select>
+                        {errors.launchCapexPieces && (
+                          <p className="mt-1 text-sm text-red-600">{errors.launchCapexPieces}</p>
+                        )}
+                      </div>
                     )}
                   </div>
 

@@ -210,18 +210,27 @@ export function computeEligibilityScore(submission = {}) {
     else if (pType === 'generic') packagingScore = 4
   }
 
-  // 8) Menu & supply chain complexity (expect numeric 0..3 or parse text)
-  const complexityCount = Number(
-    submission.menuComplexityCount ??
-      extractNumber(submission.menuSupplyChainComplexity) ??
-      0
-  )
-  let complexityScore = 2
-  if (!isNaN(complexityCount)) {
-    if (complexityCount >= 3) complexityScore = 1
+  // 8) Menu & supply chain complexity (checkbox count)
+  const complexityArr = Array.isArray(submission.menuSupplyChainComplexity)
+    ? submission.menuSupplyChainComplexity
+    : submission.menuSupplyChainComplexity
+    ? [submission.menuSupplyChainComplexity]
+    : []
+
+  const hasNone = complexityArr.includes('None of the above')
+  const complexityCount =
+    hasNone && complexityArr.length === 1
+      ? 0
+      : complexityArr.length || Number(submission.menuComplexityCount ?? extractNumber(submission.menuSupplyChainComplexity) ?? 0)
+
+  let complexityScore = 4
+  if (hasNone && complexityArr.length === 1) {
+    complexityScore = 4
+  } else if (!isNaN(complexityCount)) {
+    if (complexityCount >= 3) complexityScore = 1 // all three selected
     else if (complexityCount === 2) complexityScore = 2
     else if (complexityCount === 1) complexityScore = 3
-    else complexityScore = 4
+    else complexityScore = 4 // none selected
   }
 
   // 9) Launch CAPEX (pieces)
