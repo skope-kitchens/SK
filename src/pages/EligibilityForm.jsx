@@ -419,15 +419,15 @@ const EligibilityForm = () => {
               <div className="space-y-6 mt-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-900 mb-2">
-                    What is the expected cost of making one order—including packaging? *
+                  What is your estimated COGS % (including packaging) for your current menu? *
                   </label>
                   <textarea
                     name="cogsAnalysis"
                     value={formData.cogsAnalysis}
                     onChange={handleChange}
-                    rows="3"
+                    rows="1"
                     className={`input-field ${errors.cogsAnalysis ? 'border-red-500' : ''}`}
-                    placeholder="Summarize cost structure and margins"
+                    placeholder="e.g., 28%"
                   />
                   {errors.cogsAnalysis && (
                     <p className="mt-1 text-sm text-red-600">{errors.cogsAnalysis}</p>
