@@ -2,34 +2,120 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import Layout from '../components/Layout'
 
+// Small helper to derive tier from score (used as fallback)
+const deriveTierInfo = (score) => {
+  const s = Number(score) || 0
+
+  if (s < 4) {
+    return {
+      label: 'Needs Significant Improvement',
+      message:
+        'Your current score indicates the brand is not yet ready for onboarding. We recommend working on core performance areas and revisiting after improvements.',
+    }
+  } else if (s >= 4 && s < 6) {
+    return {
+      label: 'Promising but Needs Improvement',
+      message:
+        'Your score is good, but there is still room for improvement. Please schedule a call with our internal team to understand how you can meet the onboarding criteria.',
+    }
+  } else if (s >= 6 && s < 8) {
+    return {
+      label: 'Strong Candidate',
+      message:
+        'Your brand is performing well and is close to onboarding readiness. A discussion with our team can help unlock the remaining potential.',
+    }
+  } else {
+    return {
+      label: 'Top Tier Brand',
+      message:
+        'Excellent performance! Your brand falls in our highest tier. Our team will reach out to complete onboarding, or you can schedule a call at your convenience.',
+    }
+  }
+}
+
+// Simple score bar "graph"
+const ScoreBar = ({ score }) => {
+  const clamped = Math.max(0, Math.min(10, Number(score) || 0))
+  const percent = (clamped / 10) * 100
+
+  return (
+    <div className="mt-4">
+      <div className="relative h-3 rounded-full bg-gray-200 overflow-hidden">
+        {/* Background gradient for 4 bands */}
+        <div className="absolute inset-0 bg-gradient-to-r from-red-400 via-yellow-300 via-yellow-400 to-green-500 opacity-60" />
+        {/* Marker for current score */}
+        <div
+          className="absolute top-1/2 w-0.5 h-5 bg-black transform -translate-y-1/2"
+          style={{ left: `${percent}%` }}
+        />
+      </div>
+      <div className="flex justify-between text-[10px] text-gray-500 mt-1">
+        <span>0–4: Needs Improvement</span>
+        <span>4–6: Promising</span>
+        <span>6–8: Strong</span>
+        <span>8–10: Top Tier</span>
+      </div>
+    </div>
+  )
+}
 
 const Result = () => {
   const [scoreData, setScoreData] = useState(null)
   const [isOnboarded, setIsOnboarded] = useState(true)
   const [rating, setRating] = useState(9.1)
+  const [tierLabel, setTierLabel] = useState('')
+  const [tierMessage, setTierMessage] = useState('')
+  const [sectionScores, setSectionScores] = useState(null)
 
   useEffect(() => {
     try {
       const storedScore = localStorage.getItem('eligibilityScore')
       if (storedScore) {
         const parsed = JSON.parse(storedScore)
+
+        const ratingValue = Number(parsed.score) || 0
         setScoreData(parsed)
-        setRating(parsed.score)
-        setIsOnboarded(parsed.meetsThreshold && parsed.score >= 8.5)
+        setRating(ratingValue)
+        setSectionScores(parsed.sectionScores || null)
+
+        const onboardedFromBackend =
+          parsed.onboardingStatus === 'ONBOARDED' ||
+          (!!parsed.meetsThreshold && ratingValue >= 8.5)
+
+        setIsOnboarded(onboardedFromBackend)
+
+        // Use backend tier if present, else derive on frontend
+        if (parsed.tierLabel && parsed.tierMessage) {
+          setTierLabel(parsed.tierLabel)
+          setTierMessage(parsed.tierMessage)
+        } else {
+          const t = deriveTierInfo(ratingValue)
+          setTierLabel(t.label)
+          setTierMessage(t.message)
+        }
       } else {
         // Fallback if no score data found
-        setRating(8.6)
+        const fallbackScore = 8.6
+        setRating(fallbackScore)
         setIsOnboarded(true)
+        const t = deriveTierInfo(fallbackScore)
+        setTierLabel(t.label)
+        setTierMessage(t.message)
       }
     } catch (error) {
       console.error('Error reading eligibility score:', error)
-      setRating(8.6)
+      const fallbackScore = 8.6
+      setRating(fallbackScore)
       setIsOnboarded(true)
+      const t = deriveTierInfo(fallbackScore)
+      setTierLabel(t.label)
+      setTierMessage(t.message)
     }
   }, [])
 
   // Get AI-generated analysis summary from stored score data
-  const aiAnalysisSummary = scoreData?.aiAnalysisSummary || 
+  const aiAnalysisSummary =
+    scoreData?.aiAnalysisSummary ||
     (isOnboarded
       ? 'Your brand demonstrates excellent consistency across mapping, operations, and expansion potential. The current scale and partner portfolio align perfectly with Skope Kitchens standards.'
       : 'We spotted a few gaps in your eligibility profile. Address the highlighted points and consider re-submitting for a fresh evaluation.')
@@ -38,7 +124,7 @@ const Result = () => {
     ? {
         rating,
         analysisSummary: aiAnalysisSummary,
-        suggestions: []
+        suggestions: [],
       }
     : {
         rating,
@@ -49,30 +135,42 @@ const Result = () => {
           'Optimize delivery sales and average order value.',
           'Reduce COGS percentage to improve margins.',
           'Consider reducing menu complexity or wastage risk.',
-          'Address special conditions that may impact operations.'
-        ]
+          'Address special conditions that may impact operations.',
+        ],
       }
 
   return (
     <Layout>
       <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto">
-          
-
           {isOnboarded ? (
-            // Success State
+            // ✅ Onboarded / High-tier State
             <div className="card text-center bg-[url('/assets/Main-bg.png')] bg-cover bg-center bg-no-repeat">
               <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                <svg
+                  className="w-10 h-10 text-green-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
                 </svg>
               </div>
-              
-              <h1 className="text-3xl font-bold text-gray-900 mb-4">
+
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
                 Congratulations!
               </h1>
-              <p className="text-xl text-gray-900 mb-8">
-                You’re almost there — just one step away from being onboarded as a Skope Kitchens vendor. Feel free to schedule a call whenever it suits you.
+              <p className="text-lg font-semibold text-gray-900 mb-2">
+                {tierLabel || 'Top Tier Brand'}
+              </p>
+              <p className="text-base text-gray-900 mb-8">
+                {tierMessage ||
+                  'You’re almost there — just one step away from being onboarded as a Skope Kitchens vendor. Feel free to schedule a call whenever it suits you.'}
               </p>
 
               {/* Rating Display */}
@@ -94,12 +192,19 @@ const Result = () => {
                     />
                   ))}
                 </div>
+
+                {/* Graph / Score Bar */}
+                <ScoreBar score={result.rating} />
               </div>
 
               {/* Analysis Summary */}
               <div className="bg-gray-50 rounded-lg p-6 mb-8 text-left">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Analysis Summary</h2>
-                <p className="text-gray-900 leading-relaxed">{result.analysisSummary}</p>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                  Analysis Summary
+                </h2>
+                <p className="text-gray-900 leading-relaxed">
+                  {result.analysisSummary}
+                </p>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -116,35 +221,48 @@ const Result = () => {
                     </span>
                   </span>
                 </Link>
-              <Link
-                to="/dashboard"
-                className="inline-flex items-center justify-center px-8 py-4 bg-black text-white text-lg font-medium rounded-lg shadow-md transition-colors group"
-              >
-                <span className="relative block overflow-hidden">
-                  <span className="block transition-transform duration-300 group-hover:-translate-y-full">
-                    <span className="block">Go to Dashboard</span>
+                <Link
+                  to="https://www.skopekitchens.com/schedule-a-call"
+                  className="inline-flex items-center justify-center px-8 py-4 bg-black text-white text-lg font-medium rounded-lg shadow-md transition-colors group"
+                >
+                  <span className="relative block overflow-hidden">
+                    <span className="block transition-transform duration-300 group-hover:-translate-y-full">
+                      <span className="block">Schedule a Call</span>
+                    </span>
+                    <span className="absolute inset-0 flex items-center justify-center translate-y-full transition-transform duration-300 group-hover:translate-y-0">
+                      Schedule a Call
+                    </span>
                   </span>
-                  <span className="absolute inset-0 flex items-center justify-center translate-y-full transition-transform duration-300 group-hover:translate-y-0">
-                    Go to Dashboard
-                  </span>
-                </span>
-              </Link>
-                
+                </Link>
               </div>
             </div>
           ) : (
-            // Not Onboarded State
-            <div  className="card b-[url('/assets/Main-bg.png')] bg-cover bg-center bg-no-repeat">
-              <div className="text-center  mb-8">
+            // ❌ Not Onboarded State
+            <div className="card bg-[url('/assets/Main-bg.png')] bg-cover bg-center bg-no-repeat">
+              <div className="text-center mb-8">
                 <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <svg className="w-10 h-10 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  <svg
+                    className="w-10 h-10 text-yellow-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01M5.062 19h13.876c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.33 16c-.77 1.333.192 3 1.732 3z"
+                    />
                   </svg>
                 </div>
+
                 
-                <h1 className="text-3xl font-bold text-gray-900 mb-4">
-                  You are not onboarded yet. Please don’t worry, you can easily schedule a call at your convenience.
-                </h1>
+                <p className="text-lg font-semibold text-gray-900 mb-2">
+                  {tierLabel}
+                </p>
+                <p className="text-base text-gray-900">
+                  {tierMessage}
+                </p>
               </div>
 
               {/* Rating Display */}
@@ -166,15 +284,24 @@ const Result = () => {
                     />
                   ))}
                 </div>
+
+                {/* Graph / Score Bar */}
+                <ScoreBar score={result.rating} />
               </div>
 
-              {/* Analysis Summary */}
+              {/* Analysis Summary + Suggestions */}
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Analysis Summary</h2>
-                <p className="text-gray-900 leading-relaxed mb-4">{result.analysisSummary}</p>
-                  {result.suggestions && result.suggestions.length > 0 && (
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                  Analysis Summary
+                </h2>
+                <p className="text-gray-900 leading-relaxed mb-4">
+                  {result.analysisSummary}
+                </p>
+                {result.suggestions && result.suggestions.length > 0 && (
                   <div className="mt-4">
-                    <h3 className="font-semibold text-gray-900 mb-2">Suggestions for Improvement:</h3>
+                    <h3 className="font-semibold text-gray-900 mb-2">
+                      Suggestions for Improvement:
+                    </h3>
                     <ul className="list-disc list-inside space-y-1 text-gray-900">
                       {result.suggestions.map((suggestion, idx) => (
                         <li key={idx}>{suggestion}</li>
@@ -187,17 +314,27 @@ const Result = () => {
               {/* Email Notification Message */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                 <div className="flex items-start space-x-3">
-                  <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  <svg
+                    className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                    />
                   </svg>
                   <p className="text-sm text-blue-800">
-                    We've saved your details. A detailed analysis report has been sent to your email.
+                    We&apos;ve saved your details. A detailed analysis report has been sent to your email.
                   </p>
                 </div>
               </div>
 
               <div className="flex flex-col justify-evenly sm:flex-row gap-4">
-              <Link
+                <Link
                   to="/"
                   className="inline-flex items-center justify-center px-8 py-4 bg-black text-white text-lg font-medium rounded-lg shadow-md transition-colors group"
                 >
@@ -233,4 +370,3 @@ const Result = () => {
 }
 
 export default Result
-
