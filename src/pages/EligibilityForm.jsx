@@ -45,11 +45,6 @@ const EligibilityForm = () => {
     launchTravelCosts: '',
     specialReportingIntegrations: '',
     equipmentAvailability: '',
-
-    // Additional Considerations
-    skopePartnerRelationships: '',
-    sublicensingPotential: '',
-
     // Meta
     howDidYouHear: ''
   })
