@@ -2,35 +2,42 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import Layout from '../components/Layout'
 
-// Small helper to derive tier from score (used as fallback)
+// Tier helper based on raw score
 const deriveTierInfo = (score) => {
-  const s = Number(score) || 0
+  const rawScore = Number(score) || 0
 
-  if (s < 4) {
-    return {
-      label: 'Needs Significant Improvement',
-      message:
-        'Your current score indicates the brand is not yet ready for onboarding. We recommend working on core performance areas and revisiting after improvements.',
-    }
-  } else if (s >= 4 && s < 6) {
-    return {
-      label: 'Promising but Needs Improvement',
-      message:
-        'Your score is good, but there is still room for improvement. Please schedule a call with our internal team to understand how you can meet the onboarding criteria.',
-    }
-  } else if (s >= 6 && s < 8) {
-    return {
-      label: 'Strong Candidate',
-      message:
-        'Your brand is performing well and is close to onboarding readiness. A discussion with our team can help unlock the remaining potential.',
-    }
+  let tier = 'tier_1'
+  let tierLabel = ''
+  let tierMessage = ''
+  let bgClass = '' // used for the rating card background
+
+  if (rawScore < 4) {
+    tier = 'tier_1'
+    tierLabel = 'Needs Significant Improvement'
+    tierMessage =
+      'Your current score indicates the brand is not yet ready for onboarding. We recommend working on core performance areas and revisiting after improvements.'
+    bgClass = 'bg-red-50 border-red-200'
+  } else if (rawScore >= 4 && rawScore < 6) {
+    tier = 'tier_2'
+    tierLabel = 'Promising but Needs Improvement'
+    tierMessage =
+      'Your score is good, but there is still room for improvement. Please schedule a call with our internal team to understand how you can meet the onboarding criteria.'
+    bgClass = 'bg-yellow-50 border-yellow-200'
+  } else if (rawScore >= 6 && rawScore < 8) {
+    tier = 'tier_3'
+    tierLabel = 'Strong Candidate'
+    tierMessage =
+      'Your brand is performing well and is close to onboarding readiness. A discussion with our team can help unlock the remaining potential.'
+    bgClass = 'bg-amber-50 border-amber-200'
   } else {
-    return {
-      label: 'Top Tier Brand',
-      message:
-        'Excellent performance! Your brand falls in our highest tier. Our team will reach out to complete onboarding, or you can schedule a call at your convenience.',
-    }
+    tier = 'tier_4'
+    tierLabel = 'Top Tier Brand'
+    tierMessage =
+      'Excellent performance! Your brand falls in our highest tier. Our team will reach out to complete onboarding, or you can schedule a call at your convenience.'
+    bgClass = 'bg-green-50 border-green-200'
   }
+
+  return { tier, tierLabel, tierMessage, bgClass }
 }
 
 // Simple score bar "graph"
@@ -63,8 +70,10 @@ const Result = () => {
   const [scoreData, setScoreData] = useState(null)
   const [isOnboarded, setIsOnboarded] = useState(true)
   const [rating, setRating] = useState(9.1)
+  const [tier, setTier] = useState('tier_4')
   const [tierLabel, setTierLabel] = useState('')
   const [tierMessage, setTierMessage] = useState('')
+  const [tierBgClass, setTierBgClass] = useState('bg-green-50 border-green-200')
   const [sectionScores, setSectionScores] = useState(null)
 
   useEffect(() => {
@@ -84,23 +93,22 @@ const Result = () => {
 
         setIsOnboarded(onboardedFromBackend)
 
-        // Use backend tier if present, else derive on frontend
-        if (parsed.tierLabel && parsed.tierMessage) {
-          setTierLabel(parsed.tierLabel)
-          setTierMessage(parsed.tierMessage)
-        } else {
-          const t = deriveTierInfo(ratingValue)
-          setTierLabel(t.label)
-          setTierMessage(t.message)
-        }
+        // Tier: prefer backend if present, else derive from score
+        const baseTierInfo = deriveTierInfo(ratingValue)
+        setTier(parsed.tier || baseTierInfo.tier)
+        setTierLabel(parsed.tierLabel || baseTierInfo.tierLabel)
+        setTierMessage(parsed.tierMessage || baseTierInfo.tierMessage)
+        setTierBgClass(baseTierInfo.bgClass)
       } else {
         // Fallback if no score data found
         const fallbackScore = 8.6
         setRating(fallbackScore)
         setIsOnboarded(true)
         const t = deriveTierInfo(fallbackScore)
-        setTierLabel(t.label)
-        setTierMessage(t.message)
+        setTier(t.tier)
+        setTierLabel(t.tierLabel)
+        setTierMessage(t.tierMessage)
+        setTierBgClass(t.bgClass)
       }
     } catch (error) {
       console.error('Error reading eligibility score:', error)
@@ -108,8 +116,10 @@ const Result = () => {
       setRating(fallbackScore)
       setIsOnboarded(true)
       const t = deriveTierInfo(fallbackScore)
-      setTierLabel(t.label)
-      setTierMessage(t.message)
+      setTier(t.tier)
+      setTierLabel(t.tierLabel)
+      setTierMessage(t.tierMessage)
+      setTierBgClass(t.bgClass)
     }
   }, [])
 
@@ -174,7 +184,7 @@ const Result = () => {
               </p>
 
               {/* Rating Display */}
-              <div className="bg-gradient-to-br from-primary-50 to-white rounded-xl p-8 mb-8 border border-primary-100">
+              <div className={`rounded-xl p-8 mb-8 border ${tierBgClass}`}>
                 <p className="text-sm text-gray-600 mb-2">Your Rating</p>
                 <div className="text-6xl font-bold text-black mb-2">
                   {result.rating.toFixed(1)}
@@ -266,7 +276,7 @@ const Result = () => {
               </div>
 
               {/* Rating Display */}
-              <div className="bg-gray-50 rounded-xl p-6 mb-8 text-center">
+              <div className={`rounded-xl p-6 mb-8 text-center border ${tierBgClass}`}>
                 <p className="text-sm text-gray-600 mb-2">Your Rating</p>
                 <div className="text-5xl font-bold text-gray-900 mb-2">
                   {result.rating.toFixed(1)}
