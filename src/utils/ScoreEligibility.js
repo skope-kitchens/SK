@@ -75,8 +75,14 @@ export function computeEligibilityScore(submission = {}) {
     else socialScore = 4
   }
 
-  // 3) DSP Ratings (avg across text)
-  const avgDsp = averageNumbersInText(submission.dspRatings)
+  // 3) DSP Ratings (Swiggy/Zomato avg; fallback to legacy dspRatings text)
+  const swiggy = extractNumber(submission.swiggyRating)
+  const zomato = extractNumber(submission.zomatoRating)
+  const ratingValues = [swiggy, zomato].filter(v => v != null)
+  const avgDsp =
+    ratingValues.length > 0
+      ? ratingValues.reduce((a, b) => a + b, 0) / ratingValues.length
+      : averageNumbersInText(submission.dspRatings)
   let dspScore = 2
   if (avgDsp != null) {
     if (avgDsp < 4.0) dspScore = 1
@@ -160,28 +166,32 @@ export function computeEligibilityScore(submission = {}) {
   }
 
   // 5) Wastage (shelf life)
-  const wastageText = String(submission.wastageRisk || '').toLowerCase()
+  const wastageValue = String(submission.wastageRisk || '').toLowerCase()
   let wastageScore = 3
-  if (wastageText.includes('month')) {
-    const m = extractNumber(wastageText)
-    if (m != null) {
-      if (m < 1) wastageScore = 1
-      else if (m < 3) wastageScore = 2
-      else if (m < 3) wastageScore = 3
-      else wastageScore = 4
-    } else wastageScore = 3
-  } else if (wastageText.includes('day')) {
-    const d = extractNumber(wastageText)
-    if (d != null) {
-      if (d < 3) wastageScore = 1
-      else if (d <= 7) wastageScore = 2
-      else wastageScore = 3
-    } else wastageScore = 2
-  } else {
-    if (wastageText.includes('low')) wastageScore = 4
-    else if (wastageText.includes('medium')) wastageScore = 2
-    else if (wastageText.includes('high')) wastageScore = 1
-    else wastageScore = 3
+  // expected values: lt3d, 3to7d, 7to30d, 1to3m
+  if (wastageValue === 'lt3d') wastageScore = 1
+  else if (wastageValue === '3to7d') wastageScore = 2
+  else if (wastageValue === '7to30d') wastageScore = 3
+  else if (wastageValue === '1to3m') wastageScore = 4
+  else {
+    // fallback to text parsing
+    const wt = wastageValue
+    if (wt.includes('day')) {
+      const d = extractNumber(wt)
+      if (d != null) {
+        if (d < 3) wastageScore = 1
+        else if (d <= 7) wastageScore = 2
+        else if (d <= 30) wastageScore = 3
+        else wastageScore = 4
+      }
+    } else if (wt.includes('month')) {
+      const m = extractNumber(wt)
+      if (m != null) {
+        if (m < 1) wastageScore = 1
+        else if (m < 1.01) wastageScore = 3
+        else if (m <= 3) wastageScore = 4
+      }
+    }
   }
 
   // 6) Number of menu items

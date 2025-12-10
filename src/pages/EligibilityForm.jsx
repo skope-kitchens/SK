@@ -13,7 +13,8 @@ const EligibilityForm = () => {
     locationMapping: '',
     brandStrength: '',
     socialMediaEngagement: '',
-    dspRatings: '',
+    swiggyRating: '',
+    zomatoRating: '',
 
     // Operating
     bmDeliverySales: '',
@@ -47,7 +48,10 @@ const EligibilityForm = () => {
 
     // Additional Considerations
     skopePartnerRelationships: '',
-    sublicensingPotential: ''
+    sublicensingPotential: '',
+
+    // Meta
+    howDidYouHear: ''
   })
 
   const [errors, setErrors] = useState({})
@@ -112,8 +116,9 @@ const EligibilityForm = () => {
     if (!formData.socialMediaEngagement.trim()) {
       newErrors.socialMediaEngagement = 'Please describe social media engagement'
     }
-    if (!formData.dspRatings.trim()) {
-      newErrors.dspRatings = 'Average DSP ratings are required'
+    if (!formData.swiggyRating && !formData.zomatoRating) {
+      newErrors.swiggyRating = 'Enter at least one DSP rating (Swiggy or Zomato)'
+      newErrors.zomatoRating = 'Enter at least one DSP rating (Swiggy or Zomato)'
     }
 
     // Operating
@@ -198,6 +203,11 @@ const EligibilityForm = () => {
       newErrors.skopePartnerRelationships = 'Please describe SKOPE partner relationships'
     }
     // Sublicensing potential is optional
+
+    // Meta
+    if (!formData.howDidYouHear || !formData.howDidYouHear.trim()) {
+      newErrors.howDidYouHear = 'Please tell us how you heard about us'
+    }
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -354,21 +364,45 @@ const EligibilityForm = () => {
                   )}
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-900 mb-2">
-                  What are the average Delivery Apps ratings(DSP ratings)? *
-                  </label>
-                  <input
-                    type="text"
-                    name="dspRatings"
-                    value={formData.dspRatings}
-                    onChange={handleChange}
-                    className={`input-field ${errors.dspRatings ? 'border-red-500' : ''}`}
-                    placeholder="e.g., 4.3 on Swiggy, 4.1 on Zomato"
-                  />
-                  {errors.dspRatings && (
-                    <p className="mt-1 text-sm text-red-600">{errors.dspRatings}</p>
-                  )}
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-900 mb-2">
+                      Swiggy rating (e.g., 4.3)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="5"
+                      name="swiggyRating"
+                      value={formData.swiggyRating}
+                      onChange={handleChange}
+                      className={`input-field ${errors.swiggyRating ? 'border-red-500' : ''}`}
+                      placeholder="e.g., 4.3"
+                    />
+                    {errors.swiggyRating && (
+                      <p className="mt-1 text-sm text-red-600">{errors.swiggyRating}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-900 mb-2">
+                      Zomato rating (e.g., 4.1)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="5"
+                      name="zomatoRating"
+                      value={formData.zomatoRating}
+                      onChange={handleChange}
+                      className={`input-field ${errors.zomatoRating ? 'border-red-500' : ''}`}
+                      placeholder="e.g., 4.1"
+                    />
+                    {errors.zomatoRating && (
+                      <p className="mt-1 text-sm text-red-600">{errors.zomatoRating}</p>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -419,7 +453,7 @@ const EligibilityForm = () => {
               <div className="space-y-6 mt-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-900 mb-2">
-                  What is your estimated COGS % (including packaging) for your current menu? *
+                  What is your estimated food cost for your current menu?(COGS %) *
                   </label>
                   <textarea
                     name="cogsAnalysis"
@@ -445,7 +479,7 @@ const EligibilityForm = () => {
                     className={`input-field ${errors.dspRateType ? 'border-red-500' : ''}`}
                   >
                     <option value="">Select type</option>
-                    <option value="exclusive">Exclusive (no DSP rate caps)</option>
+                    <option value="exclusive">Exclusive (no other DSPs like Swiggy or Zomato)</option>
                     <option value="nonExclusive">Non-Exclusive</option>
                     <option value="mixed">Mixed / Market dependent</option>
                   </select>
@@ -474,7 +508,7 @@ const EligibilityForm = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-900 mb-2">
-                    Wastage Risk (Shelf Life & Ingredients) *
+                  Wastage Risk (Shelf Life & Ingredients) *
                   </label>
                   <select
                     name="wastageRisk"
@@ -483,9 +517,10 @@ const EligibilityForm = () => {
                     className={`input-field ${errors.wastageRisk ? 'border-red-500' : ''}`}
                   >
                     <option value="">Select level</option>
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
+                    <option value="lt3d">Under 3 days shelf life (&lt;3 days)</option>
+                    <option value="3to7d">3–7 days shelf life</option>
+                    <option value="7to30d">7 days to 1 month shelf life</option>
+                    <option value="1to3m">1–3 months shelf life</option>
                   </select>
                   {errors.wastageRisk && (
                     <p className="mt-1 text-sm text-red-600">{errors.wastageRisk}</p>
@@ -566,7 +601,7 @@ const EligibilityForm = () => {
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-900 mb-2">
-                    Do we need to buy additional kitchen equipment for your brand? *
+                    Do we need to buy specialized kitchen equipment for your brand? *
                     </label>
                     <div className="flex space-x-6">
                       <label className="flex items-center space-x-2 cursor-pointer">
@@ -1002,38 +1037,33 @@ const EligibilityForm = () => {
 
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-900 mb-2">
-                    SKOPE Partner Relationships *
-                  </label>
-                  <textarea
-                    name="skopePartnerRelationships"
-                    value={formData.skopePartnerRelationships}
-                    onChange={handleChange}
-                    rows="3"
-                    className={`input-field ${errors.skopePartnerRelationships ? 'border-red-500' : ''}`}
-                    placeholder="Any existing internal executive relationships with this brand?"
-                  />
-                  {errors.skopePartnerRelationships && (
-                    <p className="mt-1 text-sm text-red-600">{errors.skopePartnerRelationships}</p>
-                  )}
+                <label className="block text-sm font-medium text-gray-900 mb-2">
+                  How did you hear about us? *
+                </label>
+
+                <select
+                  name="howDidYouHear"
+                  value={formData.howDidYouHear}
+                  onChange={handleChange}
+                  className={`input-field ${errors.howDidYouHear ? 'border-red-500' : ''}`}
+                >
+                  <option value="">Select an option</option>
+                  <option value="instagram">Instagram</option>
+                  <option value="google">Google Search</option>
+                  <option value="friendReferral">Friend / Referral</option>
+                  <option value="socialMedia">Social Media</option>
+                  <option value="ads">Online Ads</option>
+                  <option value="event">Event / Workshop</option>
+                  <option value="partnership">Partner / Vendor Recommendation</option>
+                  <option value="other">Other</option>
+                </select>
+
+                {errors.howDidYouHear && (
+                  <p className="mt-1 text-sm text-red-600">{errors.howDidYouHear}</p>
+                 )}
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-900 mb-2">
-                  Can this brand be easily scaled to many kitchens using our supply chain?
-                  </label>
-                  <textarea
-                    name="sublicensingPotential"
-                    value={formData.sublicensingPotential}
-                    onChange={handleChange}
-                    rows="3"
-                    className={`input-field ${errors.sublicensingPotential ? 'border-red-500' : ''}`}
-                    placeholder="Assess if the brand can hit VK criteria, simplify supply chain, and be sub-licensed"
-                  />
-                  {errors.sublicensingPotential && (
-                    <p className="mt-1 text-sm text-red-600">{errors.sublicensingPotential}</p>
-                  )}
-                </div>
+                
               </div>
             </div>
 
