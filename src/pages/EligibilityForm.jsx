@@ -319,7 +319,7 @@ const EligibilityForm = () => {
                     onChange={handleChange}
                     rows="3"
                     className={`input-field ${errors.locationMapping ? 'border-red-500' : ''}`}
-                    placeholder="Review/Mapping of B&Ms compared to kitchens in Ecosystem - A pre-requisite"
+                    placeholder="e.g., Banglore"
                   />
                   {errors.locationMapping && (
                     <p className="mt-1 text-sm text-red-600">{errors.locationMapping}</p>
@@ -520,7 +520,7 @@ const EligibilityForm = () => {
                     <option value="lt3d">Under 3 days shelf life (&lt;3 days)</option>
                     <option value="3to7d">3–7 days shelf life</option>
                     <option value="7to30d">7 days to 1 month shelf life</option>
-                    <option value="1to3m">1–3 months shelf life</option>
+                    <option value="1to3m">More than 1 months shelf life</option>
                   </select>
                   {errors.wastageRisk && (
                     <p className="mt-1 text-sm text-red-600">{errors.wastageRisk}</p>

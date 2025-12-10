@@ -68,7 +68,7 @@ const ContactUs = () => {
       name: 'Lukose Jacob',
       role: 'Data Analyst',
       team: 'Data Analyst Team',
-      image: '/assets/Tom-Mathew.png'
+      image: '/assets/Luckose-Jacob.JPG'
     },
     {
       name: 'Prabhavathi V',
