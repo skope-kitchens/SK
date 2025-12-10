@@ -198,10 +198,6 @@ const EligibilityForm = () => {
       newErrors.equipmentAvailability = 'Please describe equipment availability / purchase needs'
     }
 
-    // Additional Considerations
-    if (!formData.skopePartnerRelationships.trim()) {
-      newErrors.skopePartnerRelationships = 'Please describe SKOPE partner relationships'
-    }
     // Sublicensing potential is optional
 
     // Meta
