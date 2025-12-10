@@ -366,6 +366,9 @@ const EligibilityForm = () => {
 
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
+                    Mention your DSP ratings of SWIGGY and ZOMATO? *
+                  </label>
                     <label className="block text-sm font-medium text-gray-900 mb-2">
                       Swiggy rating (e.g., 4.3)
                     </label>
@@ -385,6 +388,9 @@ const EligibilityForm = () => {
                     )}
                   </div>
                   <div>
+                  <label className="block text-sm font-medium mb-[28px] text-gray-900 mb-2">
+                    
+                  </label>
                     <label className="block text-sm font-medium text-gray-900 mb-2">
                       Zomato rating (e.g., 4.1)
                     </label>
