@@ -2,13 +2,7 @@ import Layout from '../components/Layout'
 
 const ContactUs = () => {
   const connectTeams = [
-    {
-      name: 'Arvind Krishnan',
-      role: 'CEO',
-      team: 'Management Team',
-      image: '/assets/Arvind-Krishnan_Light.png',
-      link: 'https://calendar.google.com/calendar/u/0/appointments/schedules/AcZssZ1-i2NOUVz8zB2gjMgYfNqOmCAJqYzdC5ElwpBV9UdEyLuDQr734EBa4bqWrcHJq6SegKNA0QAG'
-    },
+    
     {
       name: 'Shiva Kumar',
       role: 'Executive Chef',
@@ -23,13 +17,7 @@ const ContactUs = () => {
       image: '/assets/Sanjuktha-Babu_Light.png',
       link: 'https://calendar.google.com/calendar/u/0/appointments/schedules/AcZssZ0sqwXdi-0lMbxcy9Rws29YWFm1fL3iGxKSdJZzE7aGoOpxBNoFWoVNOOyto2tPh7pEciz2FnD_'
     },
-    {
-      name: null,
-      role: null,
-      team: 'Marketing Team',
-      image: '/assets/Social-Media.jpg',
-      link: 'https://calendar.google.com/calendar/u/0/appointments/schedules/AcZssZ1PA5vKyr59DqPoqyzs28vkhPS4p_TUcAI7ANM9dNWuI8PLItKsNHeiCvvMNQkeJLJ_b4mvKgot'
-    },
+    
     {
       name: null,
       role: null,
@@ -68,7 +56,7 @@ const ContactUs = () => {
       name: 'Lukose Jacob',
       role: 'Data Analyst',
       team: 'Data Analyst Team',
-      image: '/assets/Luckose-Jacob.JPG'
+      image: '/assets/Lukose-Jacob.png'
     },
     {
       name: 'Prabhavathi V',
@@ -128,28 +116,7 @@ const ContactUs = () => {
             )})}
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6 max-w-4xl h-[40vh]  mx-auto">
-            {connectTeams.slice(3).map((team, index) => {
-              const useDarkText = team.team === 'Data Analytics Team'
-              const textColorClass = useDarkText ? 'text-gray-900' : 'text-white'
-              return (
-              <div
-                key={index + 3}
-                style={{backgroundImage: `url(${team.image})`}}
-                className="bg-cover bg-center bg-no-repeat from-blue-50 to-blue-100/30 flex flex-col justify-end rounded-xl p-6 shadow-md"
-              >
-                <p className={`text-sm font-semibold ${textColorClass} mb-6`}>{team.team}</p>
-                <a
-                  href={team.link || 'https://www.skopekitchens.com/schedule-a-call'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full inline-flex items-center justify-center bg-white text-black py-3 px-6 rounded-lg font-medium hover:bg-black hover:text-white transition-colors"
-                >
-                  Schedule Call
-                </a>
-              </div>
-            )})}
-          </div>
+          
         </section>
 
         {/* Our Teams Section */}

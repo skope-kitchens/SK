@@ -130,7 +130,7 @@ const Login = () => {
               >
                 {loading ? (
                   // NO animation during loading
-                  <span>Preparing UI...</span>
+                  <span>Please Wait...</span>
                 ) : (
                   // SLIDE-UP TEXT EFFECT
                   <span className="relative block overflow-hidden">
