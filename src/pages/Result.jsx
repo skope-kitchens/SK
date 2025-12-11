@@ -156,21 +156,7 @@ const Result = () => {
           {isOnboarded ? (
             // ✅ Onboarded / High-tier State
             <div className="card text-center bg-[url('/assets/Main-bg.png')] bg-cover bg-center bg-no-repeat">
-              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <svg
-                  className="w-10 h-10 text-green-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-              </div>
+              
 
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
                 Congratulations!
@@ -250,22 +236,6 @@ const Result = () => {
             // ❌ Not Onboarded State
             <div className="card bg-[url('/assets/Main-bg.png')] bg-cover bg-center bg-no-repeat">
               <div className="text-center mb-8">
-                <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <svg
-                    className="w-10 h-10 text-yellow-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 9v2m0 4h.01M5.062 19h13.876c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.33 16c-.77 1.333.192 3 1.732 3z"
-                    />
-                  </svg>
-                </div>
-
                 
                 <p className="text-lg font-semibold text-gray-900 mb-2">
                   {tierLabel}
@@ -324,19 +294,7 @@ const Result = () => {
               {/* Email Notification Message */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                 <div className="flex items-start space-x-3">
-                  <svg
-                    className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                    />
-                  </svg>
+                  
                   <p className="text-sm text-blue-800">
                     We&apos;ve saved your details. A detailed analysis report has been sent to your email.
                   </p>
