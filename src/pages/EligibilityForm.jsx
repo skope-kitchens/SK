@@ -476,7 +476,7 @@ const EligibilityForm = () => {
                     className={`input-field ${errors.dspRateType ? 'border-red-500' : ''}`}
                   >
                     <option value="">Select type</option>
-                    <option value="exclusive">Exclusive (only on Swiggy or Zomato)</option>
+                    <option value="exclusive">Exclusive </option>
                     <option value="nonExclusive">Non-Exclusive (on both Swiggy and Zomato)</option>
                     <option value="mixed">Mixed / Market dependent</option>
                   </select>
