@@ -358,7 +358,7 @@ const EligibilityForm = () => {
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
                   <label className="block text-sm font-medium text-gray-900 mb-2">
-                    Mention your DSP ratings of SWIGGY and ZOMATO? *
+                    Mention your ratings of SWIGGY and ZOMATO? *
                   </label>
                     <label className="block text-sm font-medium text-gray-900 mb-2">
                       Swiggy rating (e.g., 4.3)
@@ -476,8 +476,8 @@ const EligibilityForm = () => {
                     className={`input-field ${errors.dspRateType ? 'border-red-500' : ''}`}
                   >
                     <option value="">Select type</option>
-                    <option value="exclusive">Exclusive (no other DSPs like Swiggy or Zomato)</option>
-                    <option value="nonExclusive">Non-Exclusive</option>
+                    <option value="exclusive">Exclusive (only on Swiggy or Zomato)</option>
+                    <option value="nonExclusive">Non-Exclusive (on both Swiggy and Zomato)</option>
                     <option value="mixed">Mixed / Market dependent</option>
                   </select>
                   {errors.dspRateType && (
@@ -554,9 +554,9 @@ const EligibilityForm = () => {
                       className={`input-field ${errors.packagingType ? 'border-red-500' : ''}`}
                     >
                       <option value="">Select packaging</option>
-                      <option value="branded">Branded Packaging Required</option>
-                      <option value="generic">Generic Packaging OK</option>
-                      <option value="mixed">Mix of Branded & Generic</option>
+                      <option value="branded">Branded Packaging</option>
+                      <option value="generic">Generic Packaging</option>
+                      <option value="mixed">Mixed Packaging</option>
                     </select>
                     {errors.packagingType && (
                       <p className="mt-1 text-sm text-red-600">{errors.packagingType}</p>
