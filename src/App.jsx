@@ -14,6 +14,7 @@ import Product from './pages/Product'
 import Cart from './pages/Cart'
 import Map from './pages/Map'
 import Category from './pages/Category'
+import Layout from './components/Layout'  
 
 
 function App() {
