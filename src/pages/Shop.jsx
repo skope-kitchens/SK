@@ -1,7 +1,6 @@
-import React from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import Layout from '../components/Layout'
 import { Link } from 'react-router-dom'
-import { useState, useEffect } from 'react'
 import axios from 'axios'
 
 const Shop = () => {
@@ -21,6 +20,17 @@ const Shop = () => {
       .catch(console.error)
 }, [])
   
+  const uniqueProducts = useMemo(() => {
+    const seen = new Set()
+    return products.filter((p) => {
+      const name = p["Supplier Item Name"] || p.name || p["supplierItemName"]
+      if (!name) return true
+      if (seen.has(name)) return false
+      seen.add(name)
+      return true
+    })
+  }, [products])
+
   return (
     <Layout>
       <div className="min-h-screen bg-gray-50">
@@ -74,11 +84,10 @@ const Shop = () => {
           
           {/* First row of products */}
           <div className="grid grid-cols-5  gap-8 mb-12">
-            {products.map((product,index) => (
-              <div key={product.id} className="text-center">
+            {uniqueProducts.map((product,index) => (
+              <div key={product._id || index} className="text-center">
                 <div className="bg-gray-200 h-56 rounded-lg mb-4"></div>
                 <p className="font-semibold mb-1">{product["Supplier Item Name"]}</p>
-                <p className="text-gray-600 mb-3">₹{product["Supplier Unit Cost"]}</p>
                 <Link to="/product">
                 <button className="bg-black text-white w-full py-2 rounded hover:bg-gray-800 transition">
                   Add to cart →

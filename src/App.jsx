@@ -40,7 +40,7 @@ function App() {
         <Route path="/product" element={<Product />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/map" element={<Map />} />
-        <Route path="/category" element={<Category />} />
+        <Route path="/category/:categoryName" element={<Category />}/>
         
       </Routes>
     </Router>
