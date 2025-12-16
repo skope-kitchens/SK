@@ -1,9 +1,25 @@
 import React from 'react'
-import Navigation from '../components/Navigation'
 import Layout from '../components/Layout'
 import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import axios from 'axios'
 
 const Shop = () => {
+  const [products, setProducts] = useState([])
+  const [categories, setCategories] = useState([])
+useEffect(() => {
+  axios.get('https://sk-backend-iio3.onrender.com/api/products')
+  .then(res =>{
+    setProducts(res.data)
+  const uniqueCategories = [
+        ...new Set(res.data.map(p => p.category))
+      ]
+      setCategories(uniqueCategories)
+    })
+    .catch(err => console.error(err))
+}, [third])
+
+
   return (
     <Layout>
       <div className="min-h-screen bg-gray-50">

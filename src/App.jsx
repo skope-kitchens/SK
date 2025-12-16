@@ -25,6 +25,7 @@ function App() {
       }}
     >
       <Routes>
+        <Route element={<Layout />}>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
@@ -40,6 +41,7 @@ function App() {
         <Route path="/cart" element={<Cart />} />
         <Route path="/map" element={<Map />} />
         <Route path="/category" element={<Category />} />
+        </Route>
       </Routes>
     </Router>
   )
