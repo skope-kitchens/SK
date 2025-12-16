@@ -45,6 +45,12 @@ const Navigation = () => {
           </Link>
 
           <div className="flex items-center space-x-6">
+          <Link
+              to="/shop"
+              className="text-sm text-gray-900 hover:text-gray-900 transition-colors"
+            >
+              Shop
+            </Link>
             <Link
               to="/contact-us"
               className="text-sm text-gray-900 hover:text-gray-900 transition-colors"
