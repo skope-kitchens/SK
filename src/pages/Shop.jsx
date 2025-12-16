@@ -5,6 +5,22 @@ import { useState, useEffect } from 'react'
 import axios from 'axios'
 
 const Shop = () => {
+  const [products, setProducts] = useState([])
+  const [categories, setCategories] = useState([])
+  const API = import.meta.env.VITE_API_BASE_URL
+
+  useEffect(() => {
+    axios.get(`${API}/api/products`)
+    .then(res=>{
+      setProducts(res.data)
+      const uniqueCategories = [
+          ...new Set(res.data.map(p => p["Category"]))
+        ]
+        setCategories(uniqueCategories)
+      })
+      .catch(console.error)
+}, [])
+  
   return (
     <Layout>
       <div className="min-h-screen bg-gray-50">
@@ -29,10 +45,10 @@ const Shop = () => {
         <section className="px-8 py-16">
           <h2 className="text-3xl font-bold text-center mb-12">Categories We Offer</h2>
           <div className="grid grid-cols-5 grid-rows-2 gap-8 mb-8">
-            {[1, 2, 3, 4, 5,6,7,8,9,10].map((item) => (
-            <Link to="/category">
-              <div key={item} className="bg-gray-200 h-80 rounded-lg flex items-end pb-4 pl-4 cursor-pointer hover:shadow-lg transition">
-                <span className="font-semibold text-gray-800">Category Name</span>
+            {categories.map((category,index) => (
+            <Link to={`/category/${category}`}>
+              <div key={index} className="bg-gray-200 h-80 rounded-lg flex items-end pb-4 pl-4 cursor-pointer hover:shadow-lg transition">
+                <span className="font-semibold text-gray-800">{category}</span>
               </div>
               </Link>
             ))}
@@ -58,11 +74,11 @@ const Shop = () => {
           
           {/* First row of products */}
           <div className="grid grid-cols-5  gap-8 mb-12">
-            {[1, 2, 3, 4, 5,6,7,8,9,10].map((item) => (
-              <div key={item} className="text-center">
+            {products.map((product,index) => (
+              <div key={product.id} className="text-center">
                 <div className="bg-gray-200 h-56 rounded-lg mb-4"></div>
-                <p className="font-semibold mb-1">Name</p>
-                <p className="text-gray-600 mb-3">Price</p>
+                <p className="font-semibold mb-1">{product["Supplier Item Name"]}</p>
+                <p className="text-gray-600 mb-3">₹{product["Supplier Unit Cost"]}</p>
                 <Link to="/product">
                 <button className="bg-black text-white w-full py-2 rounded hover:bg-gray-800 transition">
                   Add to cart →
