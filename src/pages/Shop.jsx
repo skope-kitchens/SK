@@ -17,9 +17,11 @@ const Shop = () => {
                 High-quality supplies delivered with precision and care. Built to help kitchens operate faster, smarter, and more efficiently.
               </p>
             </div>
+            <Link to="/map">
             <button className="bg-black text-white px-6 py-2 rounded hover:bg-gray-800">
               Become a Partner
             </button>
+            </Link>
           </div>
         </section>
 
