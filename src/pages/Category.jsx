@@ -98,10 +98,12 @@ export default function Category() {
                     <h3 className="font-semibold">
                       {product["Supplier Item Name"]}
                     </h3>
-
-                    <button className="mt-4 w-full bg-black text-white rounded-full py-2 font-semibold hover:bg-gray-800">
-                      Add to cart →
-                    </button>
+                    <Link
+    to={`/product/${encodeURIComponent(product["Supplier Item Name"])}`}
+    className="block bg-black text-white w-full py-2 rounded hover:bg-gray-800 transition text-center"
+  >
+    View product →
+  </Link>
                   </div>
                 ))}
               </div>

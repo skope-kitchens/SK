@@ -1,146 +1,164 @@
-import React, { useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import Layout from "../components/Layout";
-import { Link } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
+import axios from "axios";
 
 export default function Product() {
-  const [quantity, setQuantity] = useState(1);
+  const { itemName } = useParams();
+  const API = import.meta.env.VITE_API_BASE_URL;
 
-  const product = {
-    id: 1,
-    name: "Premium Cheese",
-    price: 24.99,
-    image:
-      "https://images.pexels.com/photos/821365/pexels-photo-821365.jpeg",
-    details: [
-      "Made from the fresh cream",
-      "Finely processed with natural milk/ cream",
-      "Pure and tastes best over with toasts and sandwiches",
-      "Storage - Keep refrigerated at 0°C to +4°C",
-    ],
-    vendor: {
-      name: "Fresh Farms Co.",
-      rating: 4.8,
-    },
-  };
+  const [offers, setOffers] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const relatedProducts = [
-    { id: 2, name: "Butter", price: 12.99 },
-    { id: 3, name: "Yogurt", price: 8.99 },
-    { id: 4, name: "Milk", price: 5.99 },
-    { id: 5, name: "Cream", price: 9.99 },
-  ];
+  useEffect(() => {
+    axios.get(`${API}/api/products`)
+      .then(res => {
+        setAllProducts(res.data);
+
+        const filtered = res.data.filter(
+          p => p["Supplier Item Name"] === decodeURIComponent(itemName)
+        );
+
+        setOffers(filtered);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
+  }, [itemName]);
+
+  // ✅ ALWAYS called (no conditional hooks)
+  const uniqueOffers = useMemo(() => {
+    const seen = new Set();
+    return offers.filter(o => {
+      const supplier = o["Supplier Name"];
+      if (!supplier) return true;
+      if (seen.has(supplier)) return false;
+      seen.add(supplier);
+      return true;
+    });
+  }, [offers]);
+
+  const category = offers[0]?.["Category"];
+  const productName = offers[0]?.["Supplier Item Name"];
+
+  // ✅ Recommended products (same category, different item name)
+  const recommendedProducts = useMemo(() => {
+    if (!category) return [];
+
+    const seen = new Set();
+    return allProducts.filter(p => {
+      const name = p["Supplier Item Name"];
+      if (
+        p["Category"] === category &&
+        name !== productName &&
+        !seen.has(name)
+      ) {
+        seen.add(name);
+        return true;
+      }
+      return false;
+    }).slice(0, 4);
+  }, [allProducts, category, productName]);
+
+  // ✅ Loading handled AFTER hooks
+  if (loading) {
+    return (
+      <Layout>
+        <p className="text-center py-20">Loading product…</p>
+      </Layout>
+    );
+  }
+
+  if (offers.length === 0) {
+    return (
+      <Layout>
+        <p className="text-center py-20">Product not found</p>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
-    <div className="max-w-7xl mx-auto px-4 py-10">
-      {/* Product Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-20">
-        {/* Image */}
-        <div className="bg-gray-200 rounded-3xl h-[500px] overflow-hidden">
-          <img
-            src={product.image}
-            alt={product.name}
-            className="w-full h-full object-cover"
-          />
-        </div>
+      <div className="max-w-7xl mx-auto px-4 py-10">
 
-        {/* Details */}
-        <div>
-          <h1 className="text-4xl font-bold mb-8">{product.name}</h1>
+        {/* Product Header */}
+        <h1 className="text-4xl font-bold mb-2">
+          {productName}
+        </h1>
+        <p className="text-gray-500 mb-10">
+          Category: {category}
+        </p>
 
-          {/* Vendor */}
-          <div className="bg-gray-300 rounded-2xl p-6 mb-8">
-            <h3 className="text-lg font-semibold mb-2">
-              Vendor&apos;s Offers
-            </h3>
-            <p className="font-medium">{product.vendor.name}</p>
-            <p className="text-gray-600">★ {product.vendor.rating}</p>
-          </div>
-
-          {/* Product Info */}
-          <div className="mb-8">
-            <h4 className="text-sm uppercase font-semibold text-gray-700 mb-4">
-              Product details
-            </h4>
-            <ul className="list-disc pl-5 space-y-2 text-sm text-gray-600">
-              {product.details.map((detail, idx) => (
-                <li key={idx}>{detail}</li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Price & Quantity */}
-          <div className="flex items-center gap-5 mb-8">
-            <span className="text-3xl font-bold">
-              ${product.price}
-            </span>
-
-            <div className="flex items-center border rounded-lg overflow-hidden">
-              <button
-                className="w-10 h-10 text-lg hover:bg-gray-100"
-                onClick={() =>
-                  setQuantity(Math.max(1, quantity - 1))
-                }
-              >
-                −
-              </button>
-
-              <input
-                type="number"
-                value={quantity}
-                onChange={(e) =>
-                  setQuantity(parseInt(e.target.value) || 1)
-                }
-                className="w-12 text-center outline-none"
-              />
-
-              <button
-                className="w-10 h-10 text-lg hover:bg-gray-100"
-                onClick={() => setQuantity(quantity + 1)}
-              >
-                +
-              </button>
-            </div>
-          </div>
-
-          {/* Add to Cart */}
-          <Link to ="/cart">
-          <button className="w-full bg-black text-white rounded-full py-4 text-lg font-semibold hover:bg-gray-800 transition">
-            Add to cart +
-          </button>
-          </Link>
-        </div>
-      </div>
-
-      {/* Related Products */}
-      <div>
-        <h2 className="text-3xl font-bold mb-8">
-          Related Products
-        </h2>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-          {relatedProducts.map((prod) => (
+        {/* Vendor Offers */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-20">
+          {uniqueOffers.map(offer => (
             <div
-              key={prod.id}
-              className="text-center border rounded-xl p-4"
+              key={offer._id}
+              className="border rounded-xl p-6 shadow-sm"
             >
-              <div className="bg-gray-200 rounded-lg h-48 mb-4" />
+              <h3 className="font-semibold text-lg mb-2">
+                {offer["Supplier Name"]}
+              </h3>
 
-              <h4 className="font-semibold mb-1">{prod.name}</h4>
-              <p className="font-semibold mb-4">
-                ${prod.price}
+              <p className="text-sm text-gray-500 mb-2">
+                SKU: {offer["Supplier SKU"]}
               </p>
 
-              <Link to="/cart">
-              <button className="w-full bg-black text-white rounded-full py-2 text-sm font-semibold hover:bg-gray-800 transition">
-                Add to cart +
+              <p className="text-2xl font-bold mb-4">
+                ₹{offer["Supplier Unit Cost"]}
+                <span className="text-sm text-gray-500">
+                  {" "} / {offer["Supplier Unit"]}
+                </span>
+              </p>
+
+              <div className="text-sm text-gray-600 space-y-1">
+                <p>Available Qty: {offer["Supplier Qty"]}</p>
+                <p>Tax: {offer["Tax %"]}</p>
+                <p>Net Unit Price: ₹{offer["Net Amount per Unit"]}</p>
+              </div>
+
+              <button className="mt-4 w-full bg-black text-white rounded-full py-2 hover:bg-gray-800">
+                Add to cart →
               </button>
-              </Link>
             </div>
           ))}
         </div>
+
+        {/* Recommended Products */}
+        {recommendedProducts.length > 0 && (
+          <>
+            <h2 className="text-3xl font-bold mb-8">
+              Recommended Products
+            </h2>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
+              {recommendedProducts.map(prod => (
+                <Link
+                  key={prod._id}
+                  to={`/product/${encodeURIComponent(
+                    prod["Supplier Item Name"]
+                  )}`}
+                  className="border rounded-xl p-4 text-center hover:shadow-lg transition"
+                >
+                  <div className="bg-gray-200 h-40 rounded mb-3" />
+                  <p className="font-semibold">
+                    {prod["Supplier Item Name"]}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Back */}
+        <Link to={`/category/${category}`} className="text-blue-600">
+          ← Back to category
+        </Link>
+
       </div>
-    </div>
     </Layout>
   );
 }
