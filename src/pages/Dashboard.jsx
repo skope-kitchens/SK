@@ -4,6 +4,29 @@ import { authUtils } from '../utils/auth'
 
 
 const Dashboard = () => {
+
+    const [stats] = useState({
+    totalOrders: 156,
+    activeOrders: 4,
+    lowStockItems: 3,
+    pendingDeliveries: 2,
+    revenueMonth: 12450,
+    totalCustomers: 48,
+  });
+
+  const [lowStockItems] = useState([
+    { name: "Chicken Breast", quantity: 8, unit: "kg", status: "low" },
+    { name: "Cooking Oil", quantity: 0, unit: "L", status: "critical" },
+    { name: "Basmati Rice", quantity: 12, unit: "kg", status: "low" },
+  ]);
+
+  const aiMessages = [
+    "Why is Chicken Breast running low?",
+    "When is the next delivery arriving?",
+    "How are today’s 156 orders performing?",
+  ];
+
+  
   const navigate = useNavigate()
   const [brandName, setBrandName] = useState('Your Brand')
   const status = 'Approved'
@@ -14,16 +37,17 @@ const Dashboard = () => {
     'Next onboarding milestones scheduled for Q1 fulfillment.',
   ]
 
-  useEffect(() => {
+useEffect(() => {
+  if (typeof window !== "undefined") {
     try {
-      const storedBrand = localStorage.getItem('selectedBrandName')
-      if (storedBrand) {
-        setBrandName(storedBrand)
-      }
+      const storedBrand = localStorage.getItem("selectedBrandName");
+      if (storedBrand) setBrandName(storedBrand);
     } catch (err) {
-      console.error('Unable to access stored brand name', err)
+      console.warn("Storage not available");
     }
-  }, [])
+  }
+}, []);
+
 
   const handleLogout = () => {
     authUtils.clearAuth()
@@ -70,53 +94,79 @@ const Dashboard = () => {
           </div>
         </header>
 
-        <section className="rounded-2xl bg-white p-8 shadow-sm ring-1 ring-slate-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
-                Analysis Summary
-              </p>
-              <h2 className="mt-2 text-2xl font-semibold text-slate-900">
-                Health snapshot
-              </h2>
-            </div>
-            <span className="rounded-full bg-slate-100 px-4 py-1 text-xs font-semibold text-slate-600">
-              Updated today
-            </span>
-          </div>
+        <div className="min-h-screen bg-[#1a1a1a] text-white p-8">
+      {/* Header */}
+      <div className="flex justify-between mb-10">
+        <div>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <p className="text-gray-400 text-sm">
+            Welcome back! Here's your kitchen overview.
+          </p>
+        </div>
+        <button className="border border-gray-700 rounded-lg p-2 hover:border-gray-500">
+          🔔
+        </button>
+      </div>
 
-          <ul className="mt-6 space-y-4">
-            {summaryPoints.map((point, idx) => (
-              <li
-                key={idx}
-                className="flex items-start gap-4 rounded-xl border border-slate-100 bg-slate-50/60 p-4 text-sm text-slate-600"
+      {/* Top Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
+        <Stat title="Total Stock Available" value={stats.totalOrders} />
+        <Stat title="AOV" value={stats.activeOrders} />
+        <Stat title="KPT" value={stats.lowStockItems} />
+        <Stat title="Total Sales" value={stats.pendingDeliveries} />
+      </div>
+
+      {/* Secondary Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
+        <Stat
+          title="Low Stock"
+          value={`₹${stats.revenueMonth.toLocaleString()}`}
+        />
+        <Stat title="Stock Movement" value={stats.totalCustomers} />
+      </div>
+
+      {/* Bottom Section */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        
+
+        {/* Low Stock Alert */}
+        <div className="bg-[#242424] border border-gray-700 rounded-xl p-6">
+          <h3 className="font-semibold mb-6">Low Stock Alert</h3>
+
+          <div className="space-y-4">
+            {lowStockItems.map((item, i) => (
+              <div
+                key={i}
+                className="flex justify-between border-b border-gray-700 pb-3"
               >
-                <span className="mt-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-white">
-                  {idx + 1}
+                <span>{item.name}</span>
+                <span
+                  className={
+                    item.status === "critical"
+                      ? "text-red-500 font-semibold"
+                      : "text-yellow-400 font-semibold"
+                  }
+                >
+                  {item.quantity} {item.unit}
                 </span>
-                <p className="leading-relaxed">{point}</p>
-              </li>
+              </div>
             ))}
-          </ul>
-          <br />
-          <Link to='https://www.skopekitchens.com/schedule-a-call' >
-          <button
-            className="inline-flex items-center ml-80 justify-center px-8 py-4 bg-black text-white text-lg font-medium rounded-lg shadow-md transition-colors group"
-          >
-            <span className="relative block overflow-hidden">
-              <span className="block transition-transform duration-300 group-hover:-translate-y-full">
-                <span className="block">Schedule a Call</span>
-              </span>
-              <span className="absolute inset-0 flex items-center justify-center translate-y-full transition-transform duration-300 group-hover:translate-y-0">
-                Schedule a Call
-              </span>
-            </span>
-          </button>
-          </Link>
-        </section>
+          </div>
+        </div>
+      </div>
+    </div>
+
       </div>
     </div>
   )
 }
 
+const Stat = ({ title, value }) => {
+  return (
+    <div className="bg-[#242424] border border-gray-700 rounded-xl p-6 hover:bg-[#2a2a2a] transition">
+      <p className="text-gray-400 text-xs uppercase mb-2">{title}</p>
+      <p className="text-3xl font-bold">{value}</p>
+    </div>
+  );
+};
 export default Dashboard

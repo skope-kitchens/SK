@@ -37,7 +37,7 @@ const Login = () => {
         type: 'success',
         message: 'Login successful! Redirecting...'
       })
-      setTimeout(() => navigate('/eligibility-form'), 600)
+      setTimeout(() => navigate('/'), 600)
     } catch (error) {
       const message =
         error.response?.data?.message || 'Unable to login. Please check your credentials.'
