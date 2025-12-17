@@ -88,7 +88,7 @@ export default function Category() {
                     <div className="h-48 rounded-lg overflow-hidden mb-4 bg-gray-100">
                       {product.image && (
                         <img
-                          src={product.image}
+                          src={product["image_url"]}
                           alt={product["Supplier Item Name"]}
                           className="w-full h-full object-cover"
                         />

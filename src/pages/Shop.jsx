@@ -86,7 +86,7 @@ const Shop = () => {
           <div className="grid grid-cols-5  gap-8 mb-12">
             {uniqueProducts.map((product,index) => (
               <div key={product._id || index} className="text-center">
-                <div className="bg-gray-200 h-56 rounded-lg mb-4"></div>
+                <div className="bg-gray-200 h-56 rounded-lg mb-4"><img className='w-full h-full object-cover' src={product["image_url"]} alt="" /></div>
                 <p className="font-semibold mb-1">{product["Supplier Item Name"]}</p>
                 <Link to={`/product/${encodeURIComponent(product["Supplier Item Name"])}`}>
                 <button className="bg-black text-white w-full py-2 rounded hover:bg-gray-800 transition">
