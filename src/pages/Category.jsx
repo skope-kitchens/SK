@@ -86,7 +86,7 @@ export default function Category() {
                     className="bg-white rounded-xl p-6 text-center shadow hover:shadow-lg transition"
                   >
                     <div className="h-48 rounded-lg overflow-hidden mb-4 bg-gray-100">
-                      {product.image && (
+                      {product["image_url"] && (
                         <img
                           src={product["image_url"]}
                           alt={product["Supplier Item Name"]}
