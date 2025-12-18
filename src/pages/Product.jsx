@@ -129,7 +129,7 @@ export default function Product() {
                     offer["Net Amount per Unit"] ??
                     offer["Supplier Unit Cost"] ??
                     0;
-
+                  alert("Product added to cart");
                   const cleanPrice = parseFloat(
                     String(priceSource).replace(/[^0-9.]/g, "")
                   );
