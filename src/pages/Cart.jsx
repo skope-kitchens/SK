@@ -13,6 +13,47 @@ export default function Cart() {
   const tax = subtotal * 0.1;
   const shipping = subtotal > 50 ? 0 : 9.99;
   const total = subtotal + tax + shipping;
+const handleCheckout = async () => {
+  try {
+    const res = await fetch(
+      `${import.meta.env.VITE_API_BASE_URL}/api/payment/create-order`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: total })
+      }
+    );
+
+    const order = await res.json();
+
+    const options = {
+      key: import.meta.env.VITE_RAZORPAY_KEY_ID, // frontend key
+      amount: order.amount,
+      currency: "INR",
+      name: "Your Store Name",
+      description: "Order Payment",
+      order_id: order.id,
+
+      handler: function (response) {
+        alert("Payment successful 🎉");
+        console.log(response);
+
+        // TODO: call backend to verify payment
+        // TODO: clear cart
+      },
+
+      theme: {
+        color: "#000000"
+      }
+    };
+
+    const rzp = new window.Razorpay(options);
+    rzp.open();
+  } catch (err) {
+    console.error(err);
+    alert("Payment failed");
+  }
+};
 
   return (
     <Layout>
@@ -103,9 +144,13 @@ export default function Cart() {
               </div>
             </div>
 
-            <button className="w-full bg-black text-white rounded-full py-4">
+            <button
+              onClick={handleCheckout}
+              className="w-full bg-black text-white rounded-full py-4"
+            >
               Checkout
             </button>
+
           </div>
         </main>
       </div>
