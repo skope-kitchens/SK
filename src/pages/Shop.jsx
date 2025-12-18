@@ -30,6 +30,7 @@ const Shop = () => {
       return true
     })
   }, [products])
+console.log("Products from API:", products);
 
   return (
     <Layout>
