@@ -49,7 +49,7 @@ const ScoreBar = ({ score }) => {
     <div className="mt-4">
       <div className="relative h-3 rounded-full bg-gray-200 overflow-hidden">
         {/* Background gradient for 4 bands */}
-        <div className="absolute inset-0 bg-gradient-to-r from-red-400 via-yellow-300 via-yellow-400 to-green-500 opacity-60" />
+        <div className="absolute inset-0 bg-gradient-to-r from-red-400 via-yellow-300  to-green-500 opacity-60" />
         {/* Marker for current score */}
         <div
           className="absolute top-1/2 w-0.5 h-5 bg-black transform -translate-y-1/2"

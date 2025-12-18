@@ -379,7 +379,7 @@ const EligibilityForm = () => {
                     )}
                   </div>
                   <div>
-                  <label className="block text-sm font-medium mb-[28px] text-gray-900 mb-2">
+                  <label className="block text-sm font-medium mb-[28px] text-gray-900 ">
                     
                   </label>
                     <label className="block text-sm font-medium text-gray-900 mb-2">
