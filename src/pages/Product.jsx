@@ -143,7 +143,7 @@ export default function Product() {
                   )}`}
                   className="border rounded-xl p-4 text-center hover:shadow-lg transition"
                 >
-                  <div className="bg-gray-200 h-40 rounded mb-3" />
+                  <div className="bg-gray-200 h-40 rounded mb-3" ><img src={prod["image_url"]} alt="" /></div>
                   <p className="font-semibold">
                     {prod["Supplier Item Name"]}
                   </p>
