@@ -76,7 +76,14 @@ const Navigation = () => {
             )}
 
             {isAuthed && userInitials && (
-              <button
+              <div className=" flex">
+                <Link 
+              to="/cart" 
+              className="px-4 py-2 mr-10 text-sm font-medium text-gray-900 bg-white flex justify-center items-center rounded-lg hover:bg-gray-50 transition-colors "
+            >
+              Cart
+            </Link>
+                <button
                 type="button"
                 onClick={handleAvatarClick}
                 className="flex items-center gap-2 rounded-full bg-gray-900 text-white px-3 py-1.5 text-xs font-medium shadow-sm hover:bg-gray-800 transition-colors"
@@ -86,6 +93,8 @@ const Navigation = () => {
                 </span>
                 <span className="hidden sm:inline">Dashboard</span>
               </button>
+              
+              </div>
             )}
           </div>
         </div>

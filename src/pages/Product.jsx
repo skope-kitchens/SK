@@ -2,8 +2,11 @@ import React, { useEffect, useState, useMemo } from "react";
 import Layout from "../components/Layout";
 import { useParams, Link } from "react-router-dom";
 import axios from "axios";
+import { useCart } from "../context/CartContext";
+
 
 export default function Product() {
+  const { addToCart } = useCart();
   const { itemName } = useParams();
   const API = import.meta.env.VITE_API_BASE_URL;
 
@@ -120,9 +123,31 @@ export default function Product() {
                 <p>Net Unit Price: ₹{offer["Net Amount per Unit"]}</p>
               </div>
 
-              <button className="mt-4 w-full bg-black text-white rounded-full py-2 hover:bg-gray-800">
+              <button
+                onClick={() => {
+                  const priceSource =
+                    offer["Net Amount per Unit"] ??
+                    offer["Supplier Unit Cost"] ??
+                    0;
+
+                  const cleanPrice = parseFloat(
+                    String(priceSource).replace(/[^0-9.]/g, "")
+                  );
+
+                  addToCart({
+                    id: offer._id,
+                    name: offer["Supplier Item Name"],
+                    price: cleanPrice || 0,   // 🔒 never NaN
+                    supplier: offer["Supplier Name"],
+                    unit: offer["Supplier Unit"]
+                  });
+                }}
+                className="mt-4 w-full bg-black text-white rounded-full py-2 hover:bg-gray-800"
+              >
                 Add to cart →
               </button>
+
+
             </div>
           ))}
         </div>
@@ -143,7 +168,7 @@ export default function Product() {
                   )}`}
                   className="border rounded-xl p-4 text-center hover:shadow-lg transition"
                 >
-                  <div className="bg-gray-200 h-40 rounded mb-3" ><img src={prod["image_url"]} alt="" /></div>
+                  <div className="bg-gray-200 h-40 rounded mb-3" ><img className="w-full h-full contain-cover" src={prod["image_url"]} alt="" /></div>
                   <p className="font-semibold">
                     {prod["Supplier Item Name"]}
                   </p>
