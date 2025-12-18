@@ -15,20 +15,55 @@ const Dashboard = () => {
   /* Load brand name safely */
   useEffect(() => {
     try {
-      const storedBrand = localStorage.getItem("selectedBrandName");
-      if (storedBrand) setBrandName(storedBrand);
-    } catch {
-      // ignore storage issues
-    }
+      const user = JSON.parse(sessionStorage.getItem("skope_user"));
+      if (user?.brandName) {
+        setBrandName(user.brandName);
+      }
+    } catch {}
   }, []);
 
+useEffect(() => {
+  async function loadDashboard() {
+    try {
+      const [statsRes, stockRes] = await Promise.all([
+        api.get("/api/dashboard/stats"),
+        api.get("/api/dashboard/low-stock").catch(() => [])
+,
+      ])
+
+      setStats(statsRes.data)
+      setLowStockItems(stockRes.data)
+    } catch (err) {
+      if (err.response?.status === 404) {
+        // ✅ Brand not onboarded yet
+        setStats(null)
+      } else {
+        console.error("Dashboard API error:", err)
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  loadDashboard()
+}, [])
   /* Logout handler */
   const handleLogout = () => {
-    try {
-      localStorage.removeItem("selectedBrandName");
-    } catch {}
-    navigate("/");
-  };
+  // 1️⃣ Clear auth storage
+  sessionStorage.removeItem("skope_auth_token");
+  sessionStorage.removeItem("skope_user");
+
+  // 2️⃣ Remove axios auth header (CRITICAL)
+  delete api.defaults.headers.common["Authorization"];
+
+  // 3️⃣ Reset local state
+  setStats(null);
+  setLowStockItems([]);
+  setBrandName("Your Brand");
+
+  // 4️⃣ Navigate to login / home
+  navigate("/");
+};
 
   /* Dashboard API calls */
   useEffect(() => {
@@ -36,7 +71,7 @@ const Dashboard = () => {
       try {
         const [statsRes, stockRes] = await Promise.all([
           api.get("/api/dashboard/stats"),
-          api.get("/api/dashboard/low-stock"),
+          api.get("/api/dashboard/low-stock").catch(() => []),
         ]);
 
         setStats(statsRes.data);
@@ -52,7 +87,16 @@ const Dashboard = () => {
   }, []);
 
   if (loading) return <p className="text-white p-8">Loading...</p>;
-  if (!stats) return <p className="text-red-400 p-8">Failed to load dashboard</p>;
+  if (!stats)
+  return (
+    <div className="p-8 text-slate-700">
+      <h2 className="text-xl font-semibold">Brand not onboarded yet</h2>
+      <p className="mt-2 text-slate-500">
+        Your brand is approved but operational data is not available yet.
+      </p>
+    </div>
+  )
+
 
   return (
     <div className="min-h-screen bg-slate-50 px-6 py-10">

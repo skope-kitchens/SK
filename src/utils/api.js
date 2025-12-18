@@ -14,11 +14,17 @@ function safeGet(key) {
 }
 
 api.interceptors.request.use((config) => {
-  const token = safeGet("skope_auth_token"); // ✅ EXACT KEY
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  try {
+    const token = sessionStorage.getItem("skope_auth_token")
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+  } catch {
+    // storage blocked – ignore
   }
-  return config;
-});
+  return config
+})
+
+
 
 export default api;
