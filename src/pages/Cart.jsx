@@ -19,7 +19,7 @@ export default function Cart() {
       <div className="fixed inset-0 bg-gray-100 -z-10" />
 
       <div className="h-[89vh] flex items-center justify-center">
-        <main className="bg-white w-9/12 max-w-7xl rounded-2xl px-8 py-12 grid grid-cols-1 md:grid-cols-2 gap-10 shadow-lg">
+        <main className="bg-cover bg-center bg-[url('/assets/Main-bg.png')] w-9/12 max-w-7xl rounded-2xl px-8 py-12 grid grid-cols-1 md:grid-cols-2 gap-10 shadow-lg">
 
           {/* Cart Items */}
           <div>
@@ -29,11 +29,11 @@ export default function Cart() {
               <p className="text-gray-500">Your cart is empty</p>
             )}
 
-            <div className="space-y-4">
+            <div className="space-y-4 ">
               {cartItems.map((item) => (
                 <div
                   key={item.id}
-                  className="bg-gray-300 rounded-2xl p-6 flex items-center gap-5"
+                  className="bg-white rounded-2xl p-6 flex items-center gap-5 "
                 >
                   <div className="flex-1">
                     <h4 className="font-semibold">{item.name}</h4>
@@ -74,7 +74,7 @@ export default function Cart() {
           </div>
 
           {/* Payment */}
-          <div className="bg-gray-300 rounded-3xl p-10 h-fit">
+          <div className="bg-white rounded-3xl p-10 h-fit">
             <h3 className="text-2xl font-bold text-center mb-8">
               Payment Details
             </h3>

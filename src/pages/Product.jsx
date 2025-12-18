@@ -96,11 +96,11 @@ export default function Product() {
         </p>
 
         {/* Vendor Offers */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-20">
+        <div className="grid grid-cols-1 md:grid-cols-2  gap-8 mb-20">
           {uniqueOffers.map(offer => (
             <div
               key={offer._id}
-              className="border rounded-xl p-6 shadow-sm"
+              className="border rounded-xl p-6 shadow-sm bg-cover bg-center bg-[url('/assets/Main-bg.png')]"
             >
               <h3 className="font-semibold text-lg mb-2">
                 {offer["Supplier Name"]}
