@@ -11,7 +11,12 @@ const SignUp = () => {
     companyName: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    addressLine1: '',
+    addressLine2: '',
+    city: '',
+    state: '',
+    pincode: ''
   })
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
@@ -62,36 +67,48 @@ const SignUp = () => {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    if (!validate()) {
-      return
-    }
+  if (!validate()) return;
 
-    setLoading(true)
-    setStatus({ type: '', message: '' })
+  setLoading(true);
+  setStatus({ type: '', message: '' });
 
-    try {
-      const { data } = await api.post('/api/auth/signup', {
-        name: formData.name,
-        companyName: formData.companyName,
-        email: formData.email,
-        password: formData.password
-      })
+  try {
+    const { data } = await api.post('/api/auth/signup', {
+      name: formData.name,
 
-      authUtils.setAuth(data.token, data.user)
-      setStatus({ type: 'success', message: 'Account created! Redirecting...' })
-      setTimeout(() => navigate('/eligibility-form'), 600)
-    } catch (error) {
-      const message =
-        error.response?.data?.message ||
-        'Unable to create account. Please try again.'
-      setStatus({ type: 'error', message })
-    } finally {
-      setLoading(false)
-    }
+      // ✅ FIX 1: companyName → brandName
+      brandName: formData.companyName,
+
+      email: formData.email,
+      password: formData.password,
+
+      // ✅ FIX 2: send address properly
+      address: {
+        line1: formData.addressLine1,
+        line2: formData.addressLine2,
+        city: formData.city,
+        state: formData.state,
+        pincode: formData.pincode,
+      },
+    });
+
+    authUtils.setAuth(data.token, data.user);
+    setStatus({ type: 'success', message: 'Account created! Redirecting...' });
+    setTimeout(() => navigate('/eligibility-form'), 600);
+
+  } catch (error) {
+    const message =
+      error.response?.data?.message ||
+      'Unable to create account. Please try again.';
+    setStatus({ type: 'error', message });
+  } finally {
+    setLoading(false);
   }
+};
+
 
   return (
     <Layout>
@@ -209,6 +226,66 @@ const SignUp = () => {
                 {errors.confirmPassword && (
                   <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
                 )}
+              </div>
+              
+              {/* Address Section */}
+              <div className="pt-4 border-t border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Business Address
+                </h3>
+
+                <div className="space-y-4">
+                  <input
+                    type="text"
+                    name="addressLine1"
+                    placeholder="Address Line 1"
+                    value={formData.addressLine1}
+                    onChange={handleChange}
+                    required
+                    className="input-field"
+                  />
+
+                  <input
+                    type="text"
+                    name="addressLine2"
+                    placeholder="Address Line 2 (optional)"
+                    value={formData.addressLine2}
+                    onChange={handleChange}
+                    className="input-field"
+                  />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <input
+                      type="text"
+                      name="city"
+                      placeholder="City"
+                      value={formData.city}
+                      onChange={handleChange}
+                      required
+                      className="input-field"
+                    />
+
+                    <input
+                      type="text"
+                      name="state"
+                      placeholder="State"
+                      value={formData.state}
+                      onChange={handleChange}
+                      required
+                      className="input-field"
+                    />
+                  </div>
+
+                  <input
+                    type="text"
+                    name="pincode"
+                    placeholder="Pincode"
+                    value={formData.pincode}
+                    onChange={handleChange}
+                    required
+                    className="input-field"
+                  />
+                </div>
               </div>
 
               <button

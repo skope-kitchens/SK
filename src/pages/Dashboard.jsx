@@ -98,6 +98,8 @@ useEffect(() => {
   )
 
 
+  const aov = stats.totalOrders ? stats.revenue / stats.totalOrders : 0;
+
   return (
     <div className="min-h-screen bg-slate-50 px-6 py-10">
       <div className="mx-auto max-w-6xl space-y-8">
@@ -150,10 +152,13 @@ useEffect(() => {
           <h2 className="text-3xl font-bold mb-6">Dashboard</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
-            <Stat title="Total Orders" value={stats.totalOrders} />
-            <Stat title="Active Orders" value={stats.activeOrders} />
+            <Stat title="Total Orders" value={stats.totalOrders ?? 0} />
+            <Stat title="Active Orders" value={stats.activeOrders ?? 0} />
             <Stat title="Revenue" value={`₹${stats.revenue}`} />
-            <Stat title="Customers" value={stats.customers} />
+            <Stat
+              title="Average Order Value(AOV)"
+              value={`₹${Number(aov).toFixed(2)}`}
+            />
           </div>
 
           <div className="bg-[#242424] border border-gray-700 rounded-xl p-6">

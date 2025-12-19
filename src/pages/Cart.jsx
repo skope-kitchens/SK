@@ -13,47 +13,72 @@ export default function Cart() {
   const tax = subtotal * 0.1;
   const shipping = subtotal > 50 ? 0 : 9.99;
   const total = subtotal + tax + shipping;
+
+
 const handleCheckout = async () => {
   try {
+    const user = JSON.parse(sessionStorage.getItem("skope_user"));
+
+    if (!user || !user.address) {
+      alert("Delivery address not found. Please complete your profile.");
+      return;
+    }
+
     const res = await fetch(
       `${import.meta.env.VITE_API_BASE_URL}/api/payment/create-order`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: total })
+        body: JSON.stringify({
+          amount: Math.round(total * 100), // Razorpay needs paise
+          items: cartItems,
+          deliveryAddress: user.address
+        })
       }
     );
 
     const order = await res.json();
 
     const options = {
-      key: import.meta.env.VITE_RAZORPAY_KEY_ID, // frontend key
+      key: import.meta.env.VITE_RAZORPAY_KEY_ID,
       amount: order.amount,
       currency: "INR",
       name: "Your Store Name",
       description: "Order Payment",
       order_id: order.id,
 
-      handler: function (response) {
+      handler: async function (response) {
         alert("Payment successful 🎉");
-        console.log(response);
 
-        // TODO: call backend to verify payment
+        // ✅ verify payment + save order
+        await fetch(
+          `${import.meta.env.VITE_API_BASE_URL}/api/payment/verify`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpaySignature: response.razorpay_signature
+            })
+          }
+        );
+
         // TODO: clear cart
       },
 
-      theme: {
-        color: "#000000"
-      }
+      theme: { color: "#000000" }
     };
 
     const rzp = new window.Razorpay(options);
     rzp.open();
+
   } catch (err) {
     console.error(err);
     alert("Payment failed");
   }
 };
+
 
   return (
     <Layout>
