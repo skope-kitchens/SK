@@ -100,13 +100,18 @@ export default function Product() {
           {uniqueOffers.map(offer => (
             <div
               key={offer._id}
-              className="border rounded-xl p-6 shadow-sm bg-cover bg-center bg-[url('/assets/Main-bg.png')]"
+              className="border flex justify-evenly items-center rounded-xl p-6 shadow-sm bg-cover bg-center bg-[url('/assets/Main-bg.png')]"
             >
-              <h3 className="font-semibold text-lg mb-2">
+              <div className="part1 w-6/12 h-[150px] flex justify-center items-center ">
+                <img className="w-8/12 h-120px" src={offer["image_url"]} alt="" />
+              </div>
+              
+
+              <div className="part2 w-6/12 ">
+                <h3 className="font-semibold text-lg mb-2">
                 {offer["Supplier Name"]}
               </h3>
-
-              <p className="text-sm text-gray-500 mb-2">
+                <p className="text-sm text-gray-500 mb-2">
                 SKU: {offer["Supplier SKU"]}
               </p>
 
@@ -122,7 +127,6 @@ export default function Product() {
                 <p>Tax: {offer["Tax %"]}</p>
                 <p>Net Unit Price: ₹{offer["Net Amount per Unit"]}</p>
               </div>
-
               <button
                 onClick={() => {
                   const priceSource =
@@ -146,6 +150,9 @@ export default function Product() {
               >
                 Add to cart →
               </button>
+              </div>
+
+              
 
 
             </div>

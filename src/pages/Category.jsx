@@ -51,11 +51,12 @@ export default function Category() {
           {selectedCategory}
         </h1>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-10">
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-10">
           
           {/* Sidebar */}
-          <aside className="hidden lg:block bg-white rounded-xl p-6 shadow h-fit">
+          <aside className="hidden lg:block bg-white rounded-xl p-6 shadow sticky top-20 h-fit">
             <div className="space-y-2">
+              <h1 className="font-bold text-2xl ml-4 pb-4">Categories</h1>
               {categories.map(cat => (
                 <Link key={cat} to={`/category/${cat}`}>
                   <button
