@@ -12,7 +12,6 @@ import Dashboard from './pages/Dashboard'
 import Shop from './pages/Shop'
 import Product from './pages/Product'
 import Cart from './pages/Cart'
-import Map from './pages/Map'
 import Category from './pages/Category'
 
 
@@ -39,7 +38,6 @@ function App() {
         <Route path="/shop" element={<Shop />} />
         <Route path="/product/:itemName" element={<Product />} />
         <Route path="/cart" element={<Cart />} />
-        <Route path="/map" element={<Map />} />
         <Route path="/category/:categoryName" element={<Category />}/>
         
       </Routes>

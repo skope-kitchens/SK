@@ -84,7 +84,7 @@ const handleCheckout = async () => {
     <Layout>
       <div className="fixed inset-0 bg-gray-100 -z-10" />
 
-      <div className="h-[89vh] flex items-center justify-center">
+      <div className="min-h-[100vh] m-10 flex items-center justify-center">
         <main className="bg-cover bg-center bg-[url('/assets/Main-bg.png')] w-9/12 max-w-7xl rounded-2xl px-8 py-12 grid grid-cols-1 md:grid-cols-2 gap-10 shadow-lg">
 
           {/* Cart Items */}

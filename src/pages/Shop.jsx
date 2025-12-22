@@ -82,7 +82,7 @@ const Shop = () => {
                 efficiently.
               </p>
             </div>
-            <Link to="/map">
+            <Link to="/eligibility-form">
               <button className="bg-black text-white px-6 py-2 rounded hover:bg-gray-800">
                 Become a Partner
               </button>
