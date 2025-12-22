@@ -13,6 +13,7 @@ import Shop from './pages/Shop'
 import Product from './pages/Product'
 import Cart from './pages/Cart'
 import Category from './pages/Category'
+import ScrollToTop from './components/ScrollToTop'
 
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
         v7_relativeSplatPath: true,
       }}
     >
+      <ScrollToTop />
       <Routes>
         
         <Route path="/" element={<Home />} />
