@@ -15,7 +15,7 @@ const EligibilityForm = () => {
     socialMediaEngagement: '',
     swiggyRating: '',
     zomatoRating: '',
-
+    ristaOutletId: '',
     // Operating
     bmDeliverySales: '',
     deliveryAOV: '',
@@ -298,6 +298,25 @@ const EligibilityForm = () => {
                   {errors.brandName && (
                     <p className="mt-1 text-sm text-red-600">{errors.brandName}</p>
                   )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
+                    Rista Outlet ID (optional)
+                  </label>
+
+                  <input
+                    type="text"
+                    name="ristaOutletId"
+                    value={formData.ristaOutletId}
+                    onChange={handleChange}
+                    className="input-field"
+                    placeholder="e.g., 684fcf72263602f0f3d4b023"
+                  />
+
+                  <p className="mt-1 text-xs text-gray-500">
+                    Only required if your brand is already live on Rista. You can add this later.
+                  </p>
                 </div>
 
                 <div>

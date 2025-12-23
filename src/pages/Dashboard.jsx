@@ -1,184 +1,172 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../utils/api";
 
 const Dashboard = () => {
   const navigate = useNavigate();
 
-  const [stats, setStats] = useState(null);
+  const [analytics, setAnalytics] = useState(null);
   const [lowStockItems, setLowStockItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [brandName, setBrandName] = useState("Your Brand");
+  const [loading, setLoading] = useState(false);
 
-  const status = "Approved";
+  const [brandName, setBrandName] = useState(
+    JSON.parse(sessionStorage.getItem("skope_user"))?.brandName || "Your Brand"
+  );
 
-  // -----------------------------
-  // Load brand name
-  // -----------------------------
-  useEffect(() => {
-    try {
-      const user = JSON.parse(sessionStorage.getItem("skope_user"));
-      if (user?.brandName) {
-        setBrandName(user.brandName);
-      }
-    } catch {}
-  }, []);
+  // 🔹 Filters
+  const [branchCode, setBranchCode] = useState("");
+  const [date, setDate] = useState(""); // yyyy-mm-dd
 
   // -----------------------------
-  // Load dashboard data (SINGLE EFFECT)
+  // Utils
   // -----------------------------
-  useEffect(() => {
-    async function loadDashboard() {
-      try {
-        const [statsRes, stockRes] = await Promise.all([
-          api.get("/api/dashboard/stats"),
-          api.get("/api/dashboard/low-stock"),
-        ]);
+  const toPeriod = (dateStr) => {
+    // "2025-12-23" → "2025-12"
+    return dateStr ? dateStr.slice(0, 7) : "";
+  };
 
-        setStats(statsRes.data);
-        setLowStockItems(stockRes.data || []);
-      } catch (err) {
-        console.error("Dashboard API error:", err);
-        setStats(null);
-      } finally {
-        setLoading(false);
-      }
+  // -----------------------------
+  // Fetch analytics
+  // -----------------------------
+  const fetchAnalytics = async () => {
+    if (!branchCode || !date) {
+      alert("Please select branch and date");
+      return;
     }
 
-    loadDashboard();
-  }, []);
+    const period = toPeriod(date);
+
+    setLoading(true);
+    try {
+      const [analyticsRes, stockRes] = await Promise.all([
+        api.get("/api/analytics/sales/summary", {
+          params: { branch: branchCode, period },
+        }),
+        api.get("/api/dashboard/low-stock"),
+      ]);
+
+      setAnalytics(analyticsRes.data);
+      setLowStockItems(stockRes.data || []);
+    } catch (err) {
+      console.error("Analytics fetch failed:", err);
+      alert("Failed to load analytics");
+      setAnalytics(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // -----------------------------
   // Logout
   // -----------------------------
   const handleLogout = () => {
-    sessionStorage.removeItem("skope_auth_token");
-    sessionStorage.removeItem("skope_user");
+    sessionStorage.clear();
     delete api.defaults.headers.common["Authorization"];
     navigate("/");
   };
 
   // -----------------------------
-  // Render guards
+  // Derived metrics
   // -----------------------------
-  if (loading) {
-    return <p className="p-8">Loading...</p>;
-  }
-
-  // ❌ Not eligible → block user
-  if (stats && stats.eligibilityPassed === false) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="bg-white p-8 rounded-xl shadow-sm max-w-md text-center">
-          <h2 className="text-xl font-semibold text-slate-800">
-            Brand not eligible
-          </h2>
-
-          <p className="mt-3 text-slate-500">
-            Your eligibility score is{" "}
-            <span className="font-semibold">
-              {stats.eligibilityScore}
-            </span>
-            . Unfortunately, this does not meet our onboarding threshold.
-          </p>
-
-          <button
-            onClick={handleLogout}
-            className="mt-6 rounded-lg bg-slate-900 px-6 py-2 text-white text-sm"
-          >
-            Logout
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // -----------------------------
-  // Eligible → show dashboard ALWAYS
-  // -----------------------------
-  const totalOrders = stats?.totalOrders ?? 0;
-  const activeOrders = stats?.activeOrders ?? 0;
-  const revenue = stats?.revenue ?? 0;
-  const aov = totalOrders > 0 ? revenue / totalOrders : 0;
+  const totalOrders = analytics?.noOfSales ?? 0;
+  const revenue = analytics?.revenue ?? 0;
+  const aov = analytics?.avgSaleAmount ?? 0;
 
   return (
     <div className="min-h-screen bg-slate-50 px-6 py-10">
       <div className="mx-auto max-w-6xl space-y-8">
 
-        {/* BRAND HEADER */}
+        {/* HEADER */}
         <header className="rounded-2xl bg-white p-8 shadow-sm ring-1 ring-slate-100">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex justify-between gap-4">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-slate-400">
                 Brand Dashboard
               </p>
-
               <h1 className="mt-2 text-3xl font-semibold text-slate-900">
                 {brandName}
               </h1>
-
-              <p className="mt-3 text-base text-slate-500">
-                Welcome back! Here is the latest status of your onboarding review.
-              </p>
-
-              <div className="mt-6 inline-flex items-center gap-3 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                <span className="text-sm font-medium text-emerald-700">
-                  {status}
-                </span>
-              </div>
             </div>
 
-            <div className="flex gap-3">
-              <button
-                onClick={handleLogout}
-                className="rounded-full border border-slate-200 bg-slate-50 px-4 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
-              >
-                Logout
-              </button>
+            <button
+              onClick={handleLogout}
+              className="rounded-full border border-slate-200 bg-slate-50 px-4 py-1.5 text-xs"
+            >
+              Logout
+            </button>
+          </div>
 
-              <a
-                href="/docs/NDA.pdf"
-                className="rounded-full border border-slate-200 bg-slate-50 px-4 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
-              >
-                NDA
-              </a>
-            </div>
+          {/* 🔎 FILTERS */}
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <input
+              type="text"
+              placeholder="Branch Code (e.g. BEN)"
+              value={branchCode}
+              onChange={(e) => setBranchCode(e.target.value)}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm"
+            />
+
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm"
+            />
+
+            <button
+              onClick={fetchAnalytics}
+              className="rounded-lg bg-slate-900 text-white text-sm font-medium px-4 py-2 hover:bg-slate-800"
+            >
+              Apply
+            </button>
           </div>
         </header>
 
         {/* DASHBOARD */}
-        <div className="bg-[#1a1a1a] text-white rounded-2xl p-8">
-          <h2 className="text-3xl font-bold mb-6">Dashboard</h2>
+        {loading && (
+          <p className="text-center text-slate-500">Loading analytics…</p>
+        )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
-            <Stat title="Total Orders" value={totalOrders} />
-            <Stat title="Active Orders" value={activeOrders} />
-            <Stat title="Revenue" value={`₹${revenue}`} />
-            <Stat title="Average Order Value (AOV)" value={`₹${aov.toFixed(2)}`} />
+        {analytics && !loading && (
+          <div className="bg-[#1a1a1a] text-white rounded-2xl p-8">
+            <h2 className="text-3xl font-bold mb-6">Analytics</h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
+              <Stat title="Total Orders" value={totalOrders} />
+              <Stat title="Revenue" value={`₹${revenue}`} />
+              <Stat title="Average Order Value (AOV)" value={`₹${aov.toFixed(2)}`} />
+              <Stat title="Net Amount" value={`₹${analytics.netAmount ?? 0}`} />
+            </div>
+
+            {/* LOW STOCK */}
+            <div className="bg-[#242424] border border-gray-700 rounded-xl p-6">
+              <h3 className="font-semibold mb-4">Low Stock Alert</h3>
+
+              {lowStockItems.length === 0 ? (
+                <p className="text-gray-400 text-sm">No low stock items 🎉</p>
+              ) : (
+                lowStockItems.map((item, i) => (
+                  <div
+                    key={i}
+                    className="flex justify-between border-b border-gray-700 py-2"
+                  >
+                    <span>{item.name}</span>
+                    <span className="text-yellow-400 font-semibold">
+                      {item.quantity} {item.unit}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
+        )}
 
-          <div className="bg-[#242424] border border-gray-700 rounded-xl p-6">
-            <h3 className="font-semibold mb-4">Low Stock Alert</h3>
-
-            {lowStockItems.length === 0 ? (
-              <p className="text-gray-400 text-sm">No low stock items 🎉</p>
-            ) : (
-              lowStockItems.map((item, i) => (
-                <div
-                  key={i}
-                  className="flex justify-between border-b border-gray-700 py-2"
-                >
-                  <span>{item.name}</span>
-                  <span className="text-yellow-400 font-semibold">
-                    {item.quantity} {item.unit}
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
+        {/* EMPTY STATE */}
+        {!analytics && !loading && (
+          <p className="text-center text-slate-500">
+            Select branch and date to view analytics
+          </p>
+        )}
       </div>
     </div>
   );
@@ -187,13 +175,11 @@ const Dashboard = () => {
 // -----------------------------
 // Stat Card
 // -----------------------------
-const Stat = ({ title, value }) => {
-  return (
-    <div className="bg-[#242424] border border-gray-700 rounded-xl p-6">
-      <p className="text-gray-400 text-xs uppercase mb-2">{title}</p>
-      <p className="text-3xl font-bold">{value}</p>
-    </div>
-  );
-};
+const Stat = ({ title, value }) => (
+  <div className="bg-[#242424] border border-gray-700 rounded-xl p-6">
+    <p className="text-gray-400 text-xs uppercase mb-2">{title}</p>
+    <p className="text-3xl font-bold">{value}</p>
+  </div>
+);
 
 export default Dashboard;
