@@ -1,69 +1,86 @@
+import { useEffect, useState } from 'react'
 import Layout from '../components/Layout'
+import api from '../utils/api'
 
 const ContactUs = () => {
+  const [chefName, setChefName] = useState('')
+
+  useEffect(() => {
+    const fetchChef = async () => {
+      try {
+        const res = await api.get('/api/brand/profile')
+        setChefName(res.data?.chefName || '')
+      } catch (err) {
+        console.error('[ContactUs] Failed to load chefName', err)
+        setChefName('')
+      }
+    }
+    fetchChef()
+  }, [])
+
+  const displayChefName = chefName || 'Chef'
+
   const connectTeams = [
-    
     {
-      name: 'Shiva Kumar',
+      name: displayChefName,
       role: 'Executive Chef',
       team: 'Culinary Team',
-      image: '/assets/Shiva-Kumar_Light.png',
-      link: 'https://calendar.google.com/calendar/u/0/appointments/schedules/AcZssZ2gOkj36Js9GK8IIG36DPWaSEviS7Km195Xuo-O4wI_9AOt6AleQuhJ2qogIEt3-eQEB0FRSFiI'
+      image: '/assets/chef.jpg',
+      link: 'https://calendar.google.com/calendar/u/0/appointments/schedules/AcZssZ2gOkj36Js9GK8IIG36DPWaSEviS7Km195Xuo-O4wI_9AOt6AleQuhJ2qogIEt3-eQEB0FRSFiI',
     },
     {
       name: 'Sanjuktha Babu',
       role: 'Customer Success Manager',
       team: 'Growth Team',
       image: '/assets/Sanjuktha-Babu_Light.png',
-      link: 'https://calendar.google.com/calendar/u/0/appointments/schedules/AcZssZ0sqwXdi-0lMbxcy9Rws29YWFm1fL3iGxKSdJZzE7aGoOpxBNoFWoVNOOyto2tPh7pEciz2FnD_'
+      link: 'https://calendar.google.com/calendar/u/0/appointments/schedules/AcZssZ0sqwXdi-0lMbxcy9Rws29YWFm1fL3iGxKSdJZzE7aGoOpxBNoFWoVNOOyto2tPh7pEciz2FnD_',
     },
-    
     {
       name: null,
       role: null,
       team: 'Data Analytics Team',
       image: '/assets/Data-Analytics.jpg',
-      link: 'https://calendar.google.com/calendar/u/0/appointments/schedules/AcZssZ13vng14mL6kgbPsGMVQybs2i-ftRiB9dkgrgqzv3AYGDe-CG9w8ClBeYubraom6uq90V_YlgAx'
-    }
+      link: 'https://calendar.google.com/calendar/u/0/appointments/schedules/AcZssZ13vng14mL6kgbPsGMVQybs2i-ftRiB9dkgrgqzv3AYGDe-CG9w8ClBeYubraom6uq90V_YlgAx',
+    },
   ]
 
   const teamMembers = [
     {
-      name: 'Shiva Kumar',
+      name: displayChefName,
       role: 'Executive Chef',
       team: 'Culinary Team',
-      image: '/assets/Shiva-Kumar.png'
+      image: '/assets/chef.jpg',
     },
     {
       name: 'Sanjuktha Babu',
       role: 'Customer Success Manager',
       team: 'Growth Team',
-      image: '/assets/Sanjuktha-Babu.png'
+      image: '/assets/Sanjuktha-Babu.png',
     },
     {
       name: 'Tom Mathew',
       role: 'Co-founder & COO',
       team: 'Management Team',
-      image: '/assets/Tom-Mathew.png'
+      image: '/assets/Tom-Mathew.png',
     },
     {
       name: 'Meghna Raj',
       role: 'HR Generalist',
       team: 'HR Department',
-      image: '/assets/Meghna-Raj.png'
+      image: '/assets/Meghna-Raj.png',
     },
     {
       name: 'Lukose Jacob',
       role: 'Data Analyst',
       team: 'Data Analyst Team',
-      image: '/assets/Lukose-Jacob.png'
+      image: '/assets/Lukose-Jacob.png',
     },
     {
       name: 'Prabhavathi V',
       role: 'Junior Purchase Manager',
       team: 'Procurement Team',
-      image: '/assets/Prabhavathi-V.png'
-    }
+      image: '/assets/Prabhavathi-V.png',
+    },
   ]
 
   return (
@@ -178,4 +195,3 @@ const ContactUs = () => {
 }
 
 export default ContactUs
-
