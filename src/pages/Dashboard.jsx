@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../utils/api";
 
+const BRANCH_OPTIONS = ["BEN", "MAR", "JNG", "KOR", "HO"];
+
 const Dashboard = () => {
   const navigate = useNavigate();
 
@@ -9,63 +11,76 @@ const Dashboard = () => {
   const [lowStockItems, setLowStockItems] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const [brandName] = useState(
-    JSON.parse(sessionStorage.getItem("skope_user"))?.brandName || "Your Brand"
-  );
+  const brandName =
+    JSON.parse(sessionStorage.getItem("skope_user"))?.brandName ||
+    "Your Brand";
 
   // 🔹 Filters
-  const [branchCode, setBranchCode] = useState("");
-  const [date, setDate] = useState(""); // yyyy-mm-dd
+  const [selectedBranches, setSelectedBranches] = useState([]);
+  const [date, setDate] = useState(""); // YYYY/MM
 
   // -----------------------------
-  // Utils
+  // Branch checkbox handler
   // -----------------------------
-  const toPeriod = (dateStr) => dateStr || "";
-
+  const handleBranchChange = (branch) => {
+    setSelectedBranches((prev) =>
+      prev.includes(branch)
+        ? prev.filter((b) => b !== branch)
+        : [...prev, branch]
+    );
+  };
 
   // -----------------------------
   // Fetch analytics
   // -----------------------------
   const fetchAnalytics = async () => {
-    if (!branchCode || !/^\d{4}\/\d{2}$/.test(date)) {
-      alert("Please enter date in YYYY/MM format");
+    if (
+      selectedBranches.length === 0 ||
+      !/^\d{4}\/\d{2}$/.test(date)
+    ) {
+      alert(
+        "Please select at least one branch and enter date in YYYY/MM format"
+      );
       return;
     }
-    
 
     const period = date.replace("/", "-");
-
-
     setLoading(true);
-    try {
-      try {
-        const analyticsRes = await api.get("/api/analytics/sales/summary", {
-          params: { branch: branchCode, period },
-        });
-        console.log("🔵 RISTA RAW RESPONSE:");
-console.log(JSON.stringify(analyticsRes.data, null, 2));
 
-        console.log("Analytics received:", analyticsRes.data);
-        setAnalytics(analyticsRes.data);
-      } catch (err) {
-        console.error("Analytics API failed", err);
-        setAnalytics(null);
-      }
-      
+    try {
+      const analyticsRes = await api.get(
+        "/api/analytics/sales/summary",
+        {
+          params: {
+            brandName,
+            branches: selectedBranches,
+            period,
+          },
+        }
+      );
+
+      setAnalytics(analyticsRes.data);
+
+      // Low stock (non-blocking)
       try {
         const stockRes = await api.get("/api/dashboard/low-stock");
         setLowStockItems(stockRes.data || []);
-      } catch (err) {
-        console.warn("Low stock API failed (non-blocking)", err);
+      } catch {
+        setLowStockItems([]);
       }
-      
     } catch (err) {
-      console.error("Analytics fetch failed:", err);
+      console.error("Analytics fetch failed", err);
       alert("Failed to load analytics");
       setAnalytics(null);
     } finally {
       setLoading(false);
     }
+    console.log("DASHBOARD REQUEST", {
+  brandName,
+  selectedBranches,
+  period,
+});
+
   };
 
   // -----------------------------
@@ -78,36 +93,38 @@ console.log(JSON.stringify(analyticsRes.data, null, 2));
   };
 
   // -----------------------------
-  // Derived metrics
+  // Derived metrics (ALL RESTORED)
   // -----------------------------
   const totalOrders = analytics?.noOfSales ?? 0;
   const revenue = analytics?.revenue ?? 0;
   const netRevenue = analytics?.netAmount ?? 0;
   const taxTotal = analytics?.taxTotal ?? 0;
   const discountTotal = analytics?.discountTotal ?? 0;
+
   const unsettled =
-  analytics?.balanceAmount != null
-    ? Number(analytics.balanceAmount)
-    : null;
+    analytics?.balanceAmount != null
+      ? Number(analytics.balanceAmount)
+      : null;
 
-const charges =
-  analytics?.chargeTotal != null
-    ? Number(analytics.chargeTotal)
-    : null;
+  const charges =
+    analytics?.chargeTotal != null
+      ? Number(analytics.chargeTotal)
+      : null;
 
-
- const footfall =
-  analytics?.noOfPeople > 0
-    ? analytics.noOfPeople
-    : analytics?.noOfSales ?? 0;
+  const footfall =
+    analytics?.noOfPeople > 0
+      ? analytics.noOfPeople
+      : totalOrders;
 
   const aov = analytics?.avgSaleAmount ?? 0;
-  const revenuePerCustomer = analytics?.avgSaleAmountPerPerson ?? 0;
-  
- 
+  const revenuePerCustomer =
+    analytics?.avgSaleAmountPerPerson ?? 0;
 
   const totalItemQty =
-    analytics?.items?.reduce((s, i) => s + (i.itemTotalQty || 0), 0) || 0;
+    analytics?.items?.reduce(
+      (s, i) => s + (i.itemTotalQty || 0),
+      0
+    ) || 0;
 
   const totalItemNet =
     analytics?.items?.reduce(
@@ -115,102 +132,122 @@ const charges =
       0
     ) || 0;
 
-    const itemsPerOrder =
-    analytics?.items
+  const itemsPerOrder =
+    totalOrders > 0
       ? (totalItemQty / totalOrders).toFixed(2)
       : "—";
-  
+
   const avgItemSellingPrice =
-    analytics?.items
+    totalItemQty > 0
       ? (totalItemNet / totalItemQty).toFixed(2)
       : "—";
-  
 
-  const countPerOrderCustomer =
-    totalOrders > 0 ? (footfall / totalOrders).toFixed(2) : 0;
-
-  const ncoChannel = analytics?.channelSummary?.find((c) =>
-    c.name?.toLowerCase().includes("non")
-  );
+  const customersPerOrder =
+    totalOrders > 0
+      ? (footfall / totalOrders).toFixed(2)
+      : "—";
 
   const ncoOrders =
-  analytics?.directChargeTotal === 0
-    ? analytics?.noOfSales
-    : 0;
+    analytics?.directChargeTotal === 0
+      ? analytics?.noOfSales ?? 0
+      : 0;
 
-const ncoRevenue =
-  analytics?.directChargeTotal === 0
-    ? analytics?.netAmount
-    : 0;
+  const ncoRevenue =
+    analytics?.directChargeTotal === 0
+      ? analytics?.netAmount ?? 0
+      : 0;
 
-    const formatCurrency = (val) => {
-      const num = Number(val);
-      return Number.isFinite(num)
-        ? `₹${num.toLocaleString("en-IN")}`
-        : "—";
-    };
-    
-  
+  const formatCurrency = (val) => {
+    const num = Number(val);
+    return Number.isFinite(num)
+      ? `₹${num.toLocaleString("en-IN")}`
+      : "—";
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 px-6 py-10">
       <div className="mx-auto max-w-7xl space-y-8">
 
         {/* HEADER */}
         <header className="rounded-2xl bg-white p-8 shadow-sm ring-1 ring-slate-100">
-          <div className="flex justify-between gap-4">
+          <div className="flex justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-slate-400">
                 Brand Dashboard
               </p>
-              <h1 className="mt-2 text-3xl font-semibold text-slate-900">
+              <h1 className="mt-2 text-3xl font-semibold">
                 {brandName}
               </h1>
             </div>
 
             <button
               onClick={handleLogout}
-              className="rounded-full border border-slate-200 bg-slate-50 px-4 py-1.5 text-xs"
+              className="rounded-full border px-4 py-1.5 text-xs"
             >
               Logout
             </button>
           </div>
 
           {/* FILTERS */}
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <input
-              type="text"
-              placeholder="Branch Code (e.g. BEN)"
-              value={branchCode}
-              onChange={(e) => setBranchCode(e.target.value)}
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm"
-            />
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
 
-<input
-  type="text"
-  placeholder="YYYY/MM"
-  value={date}
-  onChange={(e) => {
-    const val = e.target.value.replace(/[^0-9/]/g, "");
-    setDate(val);
-  }}
-  className="rounded-lg border border-slate-300 px-4 py-2 text-sm"
-  maxLength={7}
-/>
+            {/* Branch checkboxes */}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Select Branches *
+              </label>
+              <div className="space-y-2">
+                {BRANCH_OPTIONS.map((branch) => (
+                  <label
+                    key={branch}
+                    className="flex items-center space-x-2"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedBranches.includes(branch)}
+                      onChange={() => handleBranchChange(branch)}
+                      className="h-4 w-4"
+                    />
+                    <span className="text-sm">{branch}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
 
+            {/* Date */}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Period (YYYY/MM) *
+              </label>
+              <input
+                type="text"
+                placeholder="YYYY/MM"
+                value={date}
+                onChange={(e) =>
+                  setDate(e.target.value.replace(/[^0-9/]/g, ""))
+                }
+                maxLength={7}
+                className="w-full rounded-lg border px-4 py-2 text-sm"
+              />
+            </div>
 
-
-            <button
-              onClick={fetchAnalytics}
-              className="rounded-lg bg-slate-900 text-white text-sm font-medium px-4 py-2 hover:bg-slate-800"
-            >
-              Apply
-            </button>
+            {/* Apply */}
+            <div className="flex items-start mt-7">
+              <button
+                onClick={fetchAnalytics}
+                className="w-full rounded-lg bg-slate-900 text-white px-4 py-2"
+              >
+                Apply
+              </button>
+            </div>
           </div>
         </header>
 
         {/* DASHBOARD */}
         {loading && (
-          <p className="text-center text-slate-500">Loading analytics…</p>
+          <p className="text-center text-slate-500">
+            Loading analytics…
+          </p>
         )}
 
         {analytics && !loading && (
@@ -219,36 +256,21 @@ const ncoRevenue =
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
               <Stat title="Total Orders" value={totalOrders} />
-              <Stat title="Total Revenue" value={`₹${revenue}`} />
-              <Stat title="Net Revenue" value={`₹${netRevenue}`} />
-              <Stat title="Total Taxes" value={`₹${taxTotal}`} />
-
-              <Stat title="Total Discount" value={`₹${discountTotal}`} />
+              <Stat title="Total Revenue" value={formatCurrency(revenue)} />
+              <Stat title="Net Revenue" value={formatCurrency(netRevenue)} />
+              <Stat title="Total Taxes" value={formatCurrency(taxTotal)} />
+              <Stat title="Total Discount" value={formatCurrency(discountTotal)} />
               <Stat title="Unsettled Amount" value={formatCurrency(unsettled)} />
               <Stat title="Charges Collected" value={formatCurrency(charges)} />
-
-              <Stat title="Avg Order Value" value={`₹${aov.toFixed(2)}`} />
-
-              <Stat title="Revenue / Order" value={`₹${aov.toFixed(2)}`} />
+              <Stat title="Avg Order Value" value={formatCurrency(aov)} />
+              <Stat title="Revenue / Order" value={formatCurrency(aov)} />
               <Stat title="Customer Footfall" value={footfall} />
-              <Stat
-                title="Revenue / Customer"
-                value={`₹${revenuePerCustomer}`}
-              />
+              <Stat title="Revenue / Customer" value={formatCurrency(revenuePerCustomer)} />
               <Stat title="Items / Order" value={itemsPerOrder} />
-
-              <Stat
-                title="Avg Item Selling Price"
-                value={`₹${avgItemSellingPrice}`}
-              />
-              <Stat
-                title="Customers / Order"
-                value={countPerOrderCustomer}
-              />
+              <Stat title="Avg Item Selling Price" value={formatCurrency(avgItemSellingPrice)} />
+              <Stat title="Customers / Order" value={customersPerOrder} />
               <Stat title="Non-Chargeable Orders" value={ncoOrders} />
-              <Stat title="Revenue from NCO" value={`₹${ncoRevenue}`} />
-
-              
+              <Stat title="Revenue from NCO" value={formatCurrency(ncoRevenue)} />
             </div>
 
             {/* LOW STOCK */}
@@ -256,7 +278,9 @@ const ncoRevenue =
               <h3 className="font-semibold mb-4">Low Stock Alert</h3>
 
               {lowStockItems.length === 0 ? (
-                <p className="text-gray-400 text-sm">No low stock items 🎉</p>
+                <p className="text-gray-400 text-sm">
+                  No low stock items 🎉
+                </p>
               ) : (
                 lowStockItems.map((item, i) => (
                   <div
@@ -276,7 +300,7 @@ const ncoRevenue =
 
         {!analytics && !loading && (
           <p className="text-center text-slate-500">
-            Select branch and date to view analytics
+            Select branches and date to view analytics
           </p>
         )}
       </div>
@@ -284,12 +308,11 @@ const ncoRevenue =
   );
 };
 
-// -----------------------------
-// Stat Card
-// -----------------------------
 const Stat = ({ title, value }) => (
   <div className="bg-[#242424] border border-gray-700 rounded-xl p-6">
-    <p className="text-gray-400 text-xs uppercase mb-2">{title}</p>
+    <p className="text-gray-400 text-xs uppercase mb-2">
+      {title}
+    </p>
     <p className="text-3xl font-bold">{value}</p>
   </div>
 );
