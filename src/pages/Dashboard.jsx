@@ -169,8 +169,8 @@ const Dashboard = () => {
       <div className="mx-auto max-w-7xl space-y-8">
 
         {/* HEADER */}
-        <header className="rounded-2xl bg-white p-8 shadow-sm ring-1 ring-slate-100">
-          <div className="flex justify-between">
+        <header className="rounded-2xl bg-[url('/assets/Main-bg.png')] bg-no-repeat bg-cover p-8 shadow-sm ring-1 ring-slate-100">
+          <div className="flex justify-between items-center">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-slate-400">
                 Brand Dashboard
@@ -182,7 +182,7 @@ const Dashboard = () => {
 
             <button
               onClick={handleLogout}
-              className="rounded-full border px-4 py-1.5 text-xs"
+              className="h-10 rounded-lg bg-slate-900 text-white px-4 py-2"
             >
               Logout
             </button>
@@ -196,17 +196,17 @@ const Dashboard = () => {
               <label className="block text-sm font-medium mb-2">
                 Select Branches *
               </label>
-              <div className="space-y-2">
+              <div className="space-y-2 grid grid-cols-3">
                 {BRANCH_OPTIONS.map((branch) => (
                   <label
                     key={branch}
-                    className="flex items-center space-x-2"
+                    className="flex  space-x-2"
                   >
                     <input
                       type="checkbox"
                       checked={selectedBranches.includes(branch)}
                       onChange={() => handleBranchChange(branch)}
-                      className="h-4 w-4"
+                      className="h-4 w-4 "
                     />
                     <span className="text-sm">{branch}</span>
                   </label>
