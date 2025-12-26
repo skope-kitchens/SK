@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import Layout from "../components/Layout";
 import api from "../utils/api";
-import axios from "axios";
 
 /* ---------------- SAFE STORAGE HELPERS ---------------- */
 
@@ -66,7 +65,7 @@ const ContactUs = () => {
 
   /* ---------- SCHEDULE MEETING ---------- */
 
- const handleSchedule = async (team) => {
+const handleSchedule = async (team) => {
   const token = safeGet("skope_auth_token");
   const user = safeGetJSON("skope_user");
 
@@ -84,20 +83,14 @@ const ContactUs = () => {
   try {
     setLoading(true);
 
-    await axios.post(
-      "http://localhost:5002/api/meeting/schedule",
-      {
-        name: user?.name || "User",
-        email: user?.email || "",
-        date: new Date().toISOString(),
-        notes: `Meeting with ${team.team}`,
-      },
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
+    await api.post("/api/meeting/schedule", {
+      name: user?.name || "User",
+      email: user?.email || "",
+      date: new Date().toISOString(),
+      notes: `Meeting with ${team.team}`,
+    });
 
-    // ⭐ NO alert – direct redirect
+    // redirect after success
     window.location.href = team.link;
 
   } catch (err) {
@@ -118,6 +111,7 @@ const ContactUs = () => {
     setLoading(false);
   }
 };
+
 
 
   /* ---------- APPOINTMENT CARDS ---------- */
