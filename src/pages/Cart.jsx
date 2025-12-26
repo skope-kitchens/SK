@@ -2,7 +2,7 @@ import Layout from "../components/Layout";
 import { useCart } from "../context/CartContext";
 
 export default function Cart() {
-  const { cartItems, updateQuantity, removeItem } = useCart();
+  const { cartItems, updateQuantity, removeItem, clearCart } = useCart();
 
   // -----------------------------
   // Calculations
@@ -22,20 +22,41 @@ export default function Cart() {
   // -----------------------------
   const handleCheckout = async () => {
     try {
-      const user = JSON.parse(sessionStorage.getItem("skope_user"));
+      // -------------------------
+      // SAFE storage access
+      // -------------------------
+      let user = null;
 
-      if (!user || !user.address) {
+      try {
+        user =
+          JSON.parse(sessionStorage.getItem("skope_user")) ||
+          JSON.parse(localStorage.getItem("skope_user"));
+      } catch {
+        user = null;
+      }
+
+      if (!user) {
+        alert("Please login before checkout.");
+        return;
+      }
+
+      if (!user.address) {
         alert("Delivery address not found. Please complete your profile.");
         return;
       }
 
+      // -------------------------
+      // Create Razorpay order (backend)
+      // -------------------------
       const res = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/api/payment/create-order`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify({
-            amount: Math.round(total * 100), // Razorpay uses paise
+            amount: Math.round(total * 100), // paise
             items: cartItems,
             deliveryAddress: user.address,
           }),
@@ -44,6 +65,9 @@ export default function Cart() {
 
       const order = await res.json();
 
+      // -------------------------
+      // Razorpay Checkout
+      // -------------------------
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: order.amount,
@@ -53,13 +77,16 @@ export default function Cart() {
         order_id: order.id,
 
         handler: async function (response) {
-          alert("Payment successful 🎉");
-
+          // -------------------------
+          // Verify payment backend
+          // -------------------------
           await fetch(
             `${import.meta.env.VITE_API_BASE_URL}/api/payment/verify`,
             {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: {
+                "Content-Type": "application/json",
+              },
               body: JSON.stringify({
                 razorpayPaymentId: response.razorpay_payment_id,
                 razorpayOrderId: response.razorpay_order_id,
@@ -68,7 +95,12 @@ export default function Cart() {
             }
           );
 
-          // TODO: clear cart after success
+          // -------------------------
+          // CLEAR CART 🎉
+          // -------------------------
+          clearCart();
+
+          alert("Payment successful 🎉 Order placed!");
         },
 
         theme: { color: "#000000" },
@@ -149,7 +181,6 @@ export default function Cart() {
 
             <div className="space-y-3 mb-6 text-sm">
 
-              {/* Individual product breakdown */}
               {cartItems.map((item) => (
                 <div
                   key={item.id}
@@ -191,7 +222,8 @@ export default function Cart() {
 
             <button
               onClick={handleCheckout}
-              className="w-full bg-black text-white rounded-full py-4"
+              disabled={cartItems.length === 0}
+              className="w-full bg-black text-white rounded-full py-4 disabled:opacity-40"
             >
               Checkout
             </button>

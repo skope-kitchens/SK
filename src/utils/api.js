@@ -5,26 +5,30 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5002",
 });
 
-function safeGet(key) {
+// Safe storage getter
+function safeGetToken() {
   try {
-    return sessionStorage.getItem(key); // ✅ FIXED
-  } catch {
-    return null;
-  }
+    const s = sessionStorage.getItem("skope_auth_token")
+    if (s) return s
+  } catch {}
+
+  try {
+    const l = localStorage.getItem("skope_auth_token") || localStorage.getItem("token")
+    if (l) return l
+  } catch {}
+
+  return null
 }
 
+
+// Attach token automatically to every request
 api.interceptors.request.use((config) => {
-  try {
-    const token = sessionStorage.getItem("skope_auth_token")
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-  } catch {
-    // storage blocked – ignore
+  const token = safeGetToken()
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
   }
   return config
 })
-
 
 
 export default api;
