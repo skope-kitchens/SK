@@ -123,7 +123,7 @@ const handleSchedule = async (team) => {
       team: "Culinary Team",
       image: "/assets/chef.jpg",
       link:
-        "https://calendar.google.com/calendar/u/0/appointments/schedules/AcZssZ2gOkj36Js9GK8IIG36DPWaSEviS7Km195Xuo-O4wI_9AOt6AleQuhJ2qogIEt3-eQEB0FRSFiI",
+        "https://calendar.google.com/calendar/u/0/appointments/schedules/AcZssZ0sqwXdi-0lMbxcy9Rws29YWFm1fL3iGxKSdJZzE7aGoOpxBNoFWoVNOOyto2tPh7pEciz2FnD_",
     },
     {
       name: "Sanjuktha Babu",
