@@ -1,6 +1,6 @@
 // 🔹 ONLY paste this whole file as Dashboard.jsx
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../utils/api";
 
@@ -13,6 +13,9 @@ export default function Dashboard() {
   const [lowStockItems, setLowStockItems] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // ⭐ credits state
+  const [credits, setCredits] = useState(null);
+
   const storedUser =
     JSON.parse(sessionStorage.getItem("skope_user")) ||
     JSON.parse(localStorage.getItem("skope_user"));
@@ -22,6 +25,22 @@ export default function Dashboard() {
   const [selectedBranches, setSelectedBranches] = useState([]);
   const [date, setDate] = useState("");
 
+  /* ---------------- FETCH REMAINING CREDITS ---------------- */
+  useEffect(() => {
+    const fetchCredits = async () => {
+      try {
+        const res = await api.get("/api/auth/credits"); // 👈 change if your route differs
+        setCredits(res.data?.credits ?? 0);
+      } catch (err) {
+        console.error("Failed to load credits", err);
+        setCredits(null);
+      }
+    };
+
+    fetchCredits();
+  }, []);
+
+  /* ---------------- BRANCH SELECTION ---------------- */
   const handleBranchChange = (branch) => {
     setSelectedBranches((prev) =>
       prev.includes(branch)
@@ -30,6 +49,7 @@ export default function Dashboard() {
     );
   };
 
+  /* ---------------- FETCH ANALYTICS ---------------- */
   const fetchAnalytics = async () => {
     if (selectedBranches.length === 0 || !/^\d{4}\/\d{2}$/.test(date)) {
       alert("Please select branches and date as YYYY/MM");
@@ -65,13 +85,14 @@ export default function Dashboard() {
     }
   };
 
+  /* ---------------- LOGOUT ---------------- */
   const handleLogout = () => {
     sessionStorage.clear();
     localStorage.clear();
     navigate("/");
   };
 
-  // ------------- DERIVED METRICS -------------
+  /* ---------------- DERIVED METRICS ---------------- */
 
   const totalOrders = analytics?.noOfSales ?? 0;
   const revenue = analytics?.revenue ?? 0;
@@ -80,11 +101,12 @@ export default function Dashboard() {
   const discountTotal = analytics?.discountTotal ?? 0;
   const unsettled = analytics?.balanceAmount ?? 0;
   const charges = analytics?.chargeTotal ?? 0;
+
   const footfall = analytics?.noOfPeople ?? totalOrders;
 
   const aov = analytics?.avgSaleAmount ?? 0;
 
-  const revenuePerOrder = aov; // 🔹 separate tile that was missing
+  const revenuePerOrder = aov;
 
   const revenuePerCustomer =
     analytics?.avgSaleAmountPerPerson ?? 0;
@@ -123,9 +145,10 @@ export default function Dashboard() {
     <div className="min-h-screen bg-slate-50 px-6 py-10">
       <div className="mx-auto max-w-7xl space-y-8">
 
-        {/* HEADER */}
+        {/* ---------------- HEADER ---------------- */}
         <header className="rounded-2xl bg-[url('/assets/Main-bg.png')] bg-no-repeat bg-cover p-8 shadow ring-1 ring-slate-200">
           <div className="flex justify-between items-center">
+
             <div>
               <p className="text-xs uppercase tracking-[0.25em] text-slate-500">
                 Brand Dashboard
@@ -133,15 +156,25 @@ export default function Dashboard() {
               <h1 className="mt-1 text-3xl font-semibold">{brandName}</h1>
             </div>
 
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 bg-black text-white rounded-lg"
-            >
-              Logout
-            </button>
+            <div className="flex items-center gap-4">
+
+              {/* ⭐ REMAINING CREDITS BADGE */}
+              <div className="bg-white text-black px-4 py-2 rounded-xl shadow">
+                <span className="font-semibold">Credits:</span>{" "}
+                {credits === null ? "—" : credits}
+              </div>
+
+              {/* LOGOUT BUTTON */}
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 bg-black text-white rounded-lg"
+              >
+                Logout
+              </button>
+            </div>
           </div>
 
-          {/* FILTERS */}
+          {/* ---------------- FILTERS ---------------- */}
           <div className="mt-6 grid md:grid-cols-3 gap-6">
             {/* Branches */}
             <div>
@@ -192,19 +225,19 @@ export default function Dashboard() {
           </div>
         </header>
 
-        {/* LOADING */}
+        {/* ---------------- LOADING ---------------- */}
         {loading && (
           <p className="text-center text-gray-500">Loading…</p>
         )}
 
-        {/* EMPTY */}
+        {/* ---------------- EMPTY ---------------- */}
         {!analytics && !loading && (
           <p className="text-center text-gray-500">
             Select filters to view analytics
           </p>
         )}
 
-        {/* MAIN DASHBOARD */}
+        {/* ---------------- DASHBOARD DATA ---------------- */}
         {analytics && !analytics.noData && !loading && (
           <div className="bg-[#111] text-white rounded-2xl p-8 space-y-8">
 
