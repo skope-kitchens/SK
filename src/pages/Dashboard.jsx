@@ -16,20 +16,35 @@ export default function Dashboard() {
   // ⭐ credits state
   const [credits, setCredits] = useState(null);
 
-  const storedUser =
-    JSON.parse(sessionStorage.getItem("skope_user")) ||
-    JSON.parse(localStorage.getItem("skope_user"));
-
-  const brandName = storedUser?.brandName || "Your Brand";
-
-  const [selectedBranches, setSelectedBranches] = useState([]);
-  const [date, setDate] = useState("");
+  /* ---------------- SAFE TOKEN FETCH ---------------- */
+  function getTokenSafely() {
+    try {
+      return (
+        sessionStorage.getItem("skope_auth_token") ||
+        localStorage.getItem("skope_auth_token") ||
+        localStorage.getItem("token")
+      );
+    } catch {
+      console.warn("Storage blocked by browser");
+      return null;
+    }
+  }
 
   /* ---------------- FETCH REMAINING CREDITS ---------------- */
   useEffect(() => {
     const fetchCredits = async () => {
+      const token = getTokenSafely();
+
+      if (!token) {
+        setCredits(null);
+        return;
+      }
+
       try {
-        const res = await api.get("/api/auth/credits"); // 👈 change if your route differs
+        const res = await api.get("/api/auth/credits", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
         setCredits(res.data?.credits ?? 0);
       } catch (err) {
         console.error("Failed to load credits", err);
@@ -39,6 +54,21 @@ export default function Dashboard() {
 
     fetchCredits();
   }, []);
+
+  /* ---------------- USER DETAILS ---------------- */
+  let storedUser = null;
+  try {
+    storedUser =
+      JSON.parse(sessionStorage.getItem("skope_user")) ||
+      JSON.parse(localStorage.getItem("skope_user"));
+  } catch {
+    storedUser = null;
+  }
+
+  const brandName = storedUser?.brandName || "Your Brand";
+
+  const [selectedBranches, setSelectedBranches] = useState([]);
+  const [date, setDate] = useState("");
 
   /* ---------------- BRANCH SELECTION ---------------- */
   const handleBranchChange = (branch) => {
@@ -61,11 +91,7 @@ export default function Dashboard() {
 
     try {
       const res = await api.get("/api/analytics/sales/summary", {
-        params: {
-          brandName,
-          branches: selectedBranches,
-          period,
-        },
+        params: { brandName, branches: selectedBranches, period },
       });
 
       setAnalytics(res.data);
@@ -87,8 +113,11 @@ export default function Dashboard() {
 
   /* ---------------- LOGOUT ---------------- */
   const handleLogout = () => {
-    sessionStorage.clear();
-    localStorage.clear();
+    try {
+      sessionStorage.clear();
+      localStorage.clear();
+    } catch {}
+
     navigate("/");
   };
 
@@ -99,17 +128,9 @@ export default function Dashboard() {
   const netRevenue = analytics?.netAmount ?? 0;
   const taxTotal = analytics?.taxTotal ?? 0;
   const discountTotal = analytics?.discountTotal ?? 0;
-  const unsettled = analytics?.balanceAmount ?? 0;
-  const charges = analytics?.chargeTotal ?? 0;
-
-  const footfall = analytics?.noOfPeople ?? totalOrders;
 
   const aov = analytics?.avgSaleAmount ?? 0;
-
   const revenuePerOrder = aov;
-
-  const revenuePerCustomer =
-    analytics?.avgSaleAmountPerPerson ?? 0;
 
   const totalItemQty =
     analytics?.items?.reduce(
@@ -129,26 +150,18 @@ export default function Dashboard() {
   const avgItemSellingPrice =
     totalItemQty ? (totalItemNet / totalItemQty).toFixed(2) : "—";
 
-  const customersPerOrder =
-    totalOrders ? (footfall / totalOrders).toFixed(2) : "—";
-
-  const ncoOrders =
-    analytics?.directChargeTotal === 0 ? totalOrders : 0;
-
-  const ncoRevenue =
-    analytics?.directChargeTotal === 0 ? netRevenue : 0;
-
   const formatCurrency = (n) =>
     `₹${Number(n || 0).toLocaleString("en-IN")}`;
+
+  /* ---------------- UI ---------------- */
 
   return (
     <div className="min-h-screen bg-slate-50 px-6 py-10">
       <div className="mx-auto max-w-7xl space-y-8">
 
-        {/* ---------------- HEADER ---------------- */}
-        <header className="rounded-2xl bg-[url('/assets/Main-bg.png')] bg-no-repeat bg-cover p-8 shadow ring-1 ring-slate-200">
+        {/* HEADER */}
+        <header className="rounded-2xl bg-[url('/assets/Main-bg.png')] bg-cover p-8 shadow ring-1">
           <div className="flex justify-between items-center">
-
             <div>
               <p className="text-xs uppercase tracking-[0.25em] text-slate-500">
                 Brand Dashboard
@@ -158,13 +171,12 @@ export default function Dashboard() {
 
             <div className="flex items-center gap-4">
 
-              {/* ⭐ REMAINING CREDITS BADGE */}
+              {/* ⭐ Remaining credits */}
               <div className="bg-white text-black px-4 py-2 rounded-xl shadow">
                 <span className="font-semibold">Credits:</span>{" "}
-                {credits === null ? "—" : credits}
+                {credits === null ? "Login required" : credits}
               </div>
 
-              {/* LOGOUT BUTTON */}
               <button
                 onClick={handleLogout}
                 className="px-4 py-2 bg-black text-white rounded-lg"
@@ -174,9 +186,8 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* ---------------- FILTERS ---------------- */}
+          {/* filters */}
           <div className="mt-6 grid md:grid-cols-3 gap-6">
-            {/* Branches */}
             <div>
               <label className="text-sm font-medium mb-2 block">
                 Select Branches *
@@ -196,7 +207,6 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Date */}
             <div>
               <label className="text-sm font-medium mb-2 block">
                 Period (YYYY/MM) *
@@ -213,7 +223,6 @@ export default function Dashboard() {
               />
             </div>
 
-            {/* Apply */}
             <div className="flex items-end">
               <button
                 onClick={fetchAnalytics}
@@ -225,26 +234,13 @@ export default function Dashboard() {
           </div>
         </header>
 
-        {/* ---------------- LOADING ---------------- */}
-        {loading && (
-          <p className="text-center text-gray-500">Loading…</p>
-        )}
+        {loading && <p className="text-center">Loading…</p>}
 
-        {/* ---------------- EMPTY ---------------- */}
-        {!analytics && !loading && (
-          <p className="text-center text-gray-500">
-            Select filters to view analytics
-          </p>
-        )}
-
-        {/* ---------------- DASHBOARD DATA ---------------- */}
-        {analytics && !analytics.noData && !loading && (
+        {analytics && !loading && !analytics.noData && (
           <div className="bg-[#111] text-white rounded-2xl p-8 space-y-8">
-
             <h2 className="text-3xl font-bold mb-3">Analytics</h2>
 
             <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
-
               <Stat title="Total Orders" value={totalOrders} />
               <Stat title="Total Revenue" value={formatCurrency(revenue)} />
               <Stat title="Net Revenue" value={formatCurrency(netRevenue)} />
@@ -254,29 +250,6 @@ export default function Dashboard() {
               <Stat title="Revenue / Order" value={formatCurrency(revenuePerOrder)} />
               <Stat title="Items / Order" value={itemsPerOrder} />
               <Stat title="Avg Item Selling Price" value={formatCurrency(avgItemSellingPrice)} />
-            </div>
-
-            {/* LOW STOCK */}
-            <div className="bg-[#181818] p-6 rounded-xl border border-gray-700">
-              <h3 className="font-semibold mb-3">Low Stock Alerts</h3>
-
-              {lowStockItems.length === 0 && (
-                <p className="text-gray-400 text-sm">
-                  No items are low on stock 🎉
-                </p>
-              )}
-
-              {lowStockItems.map((item, i) => (
-                <div
-                  key={i}
-                  className="flex justify-between border-b border-gray-700 py-2"
-                >
-                  <span>{item.name}</span>
-                  <span className="text-yellow-400 font-semibold">
-                    {item.quantity} {item.unit}
-                  </span>
-                </div>
-              ))}
             </div>
           </div>
         )}
