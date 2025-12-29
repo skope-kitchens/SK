@@ -30,7 +30,30 @@ export default function Dashboard() {
     }
   }
 
+  /* ---------------- FETCH REMAINING CREDITS ---------------- */
+  useEffect(() => {
+    const fetchCredits = async () => {
+      const token = getTokenSafely();
 
+      if (!token) {
+        setCredits(null);
+        return;
+      }
+
+      try {
+        const res = await api.get("/api/auth/credits", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        setCredits(res.data?.credits ?? 0);
+      } catch (err) {
+        console.error("Failed to load credits", err);
+        setCredits(null);
+      }
+    };
+
+    fetchCredits();
+  }, []);
 
   /* ---------------- USER DETAILS ---------------- */
   let storedUser = null;
@@ -148,7 +171,11 @@ export default function Dashboard() {
 
             <div className="flex items-center gap-4">
 
-              
+              {/* ⭐ Remaining credits */}
+              <div className="bg-white text-black px-4 py-2 rounded-xl shadow">
+                <span className="font-semibold">Credits:</span>{" "}
+                {credits === null ? "Login required" : credits}
+              </div>
 
               <button
                 onClick={handleLogout}
