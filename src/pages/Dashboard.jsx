@@ -15,7 +15,6 @@ const BRANCH_LABELS = {
 };
 
 // 👉 map UI branch → Rista branchCode
-//    ⚠️ put real mapping here when you know it
 const RISTA_BRANCH_MAP = {
   BEN: "AMS",
   MAR: "MAR",
@@ -32,7 +31,6 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [credits, setCredits] = useState(null);
 
-  /* ---------------- SAFE TOKEN FETCH ---------------- */
   function getTokenSafely() {
     try {
       return (
@@ -41,7 +39,6 @@ export default function Dashboard() {
         localStorage.getItem("token")
       );
     } catch {
-      console.warn("Storage blocked by browser");
       return null;
     }
   }
@@ -71,16 +68,13 @@ export default function Dashboard() {
     storedUser =
       JSON.parse(sessionStorage.getItem("skope_user")) ||
       JSON.parse(localStorage.getItem("skope_user"));
-  } catch {
-    storedUser = null;
-  }
+  } catch {}
 
   const brandName = storedUser?.brandName || "Your Brand";
 
   const [selectedBranches, setSelectedBranches] = useState([]);
-  const [date, setDate] = useState("");
+  const [day, setDay] = useState("");
 
-  /* ---------------- BRANCH SELECTION ---------------- */
   const handleBranchChange = (branch) => {
     setSelectedBranches((prev) =>
       prev.includes(branch)
@@ -89,22 +83,20 @@ export default function Dashboard() {
     );
   };
 
-  /* ---------------- FETCH STOCK REPORT ---------------- */
+  /* ---------------- FETCH STOCK ---------------- */
   const fetchStockReport = async () => {
     try {
       const firstBranch = selectedBranches[0];
       if (!firstBranch) return;
 
-      // 👉 this is the REAL branchCode for Rista endpoint
       const branchCode = RISTA_BRANCH_MAP[firstBranch];
 
       const res = await api.get("/api/stock/items", {
-      params: {
-        brandName,
-        branchLabel: BRANCH_LABELS[firstBranch],
-      },
-    });
-
+        params: {
+          brandName,
+          branchLabel: BRANCH_LABELS[firstBranch],
+        },
+      });
 
       let items =
         res.data?.data ||
@@ -118,20 +110,13 @@ export default function Dashboard() {
       }
       if (!Array.isArray(items)) items = [];
 
-
-      // 👉 normalise + compute final status
       const simplified = items.map((i) => {
         const qty = Number(i.itemQty ?? i.quantity ?? 0);
 
         let status;
-
         if (qty <= 0) status = "Out of Stock";
         else if (qty < 5) status = "Low Stock";
         else status = "In Stock";
-
-        // Prefer backend stockStatus label, but fallback to our logic
-        if (i.stockStatus === "OUT_OF_STOCK") status = "Out of Stock";
-        if (i.stockStatus === "IN_STOCK" && qty < 5) status = "Low Stock";
 
         return {
           name: i.name || i.itemName || "Unnamed",
@@ -141,35 +126,34 @@ export default function Dashboard() {
         };
       });
 
-      // 👉 show ONLY alerts (not healthy stock)
       const alerts = simplified.filter(
         (i) => i.status === "Low Stock" || i.status === "Out of Stock"
       );
 
       setLowStockItems(alerts);
-    } catch (err) {
-      console.error("Stock fetch failed", err);
+    } catch {
       setLowStockItems([]);
     }
   };
 
-  /* ---------------- FETCH ANALYTICS + STOCK ---------------- */
+  /* ---------------- FETCH ANALYTICS ---------------- */
   const fetchAnalytics = async () => {
-    if (selectedBranches.length === 0 || !/^\d{4}\/\d{2}$/.test(date)) {
-      alert("Please select branches and date as YYYY/MM");
+    if (selectedBranches.length === 0 || !/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+      alert("Please select branches and date as YYYY-MM-DD");
       return;
     }
 
-    const period = date.replace("/", "-");
     setLoading(true);
 
     try {
       const res = await api.get("/api/analytics/sales/summary", {
-        params: { brandName, branches: selectedBranches, period },
+        params: {
+          branches: selectedBranches,
+          day, // 👈 IMPORTANT — send YYYY-MM-DD
+        },
       });
 
       setAnalytics(res.data);
-
       await fetchStockReport();
     } catch (err) {
       console.error(err);
@@ -180,7 +164,6 @@ export default function Dashboard() {
     }
   };
 
-  /* ---------------- LOGOUT ---------------- */
   const handleLogout = () => {
     try {
       sessionStorage.clear();
@@ -189,7 +172,7 @@ export default function Dashboard() {
     navigate("/");
   };
 
-  /* ---------------- DERIVED METRICS ---------------- */
+  /* ---------------- DERIVED KPIs ---------------- */
   const totalOrders = analytics?.noOfSales ?? 0;
   const revenue = analytics?.revenue ?? 0;
   const netRevenue = analytics?.netAmount ?? 0;
@@ -200,13 +183,10 @@ export default function Dashboard() {
   const revenuePerOrder = aov;
 
   const totalItemQty =
-    analytics?.items?.reduce((sum, i) => sum + (i.itemTotalQty || 0), 0) || 0;
+    analytics?.items?.reduce((s, i) => s + Number(i.quantity || 0), 0) || 0;
 
   const totalItemNet =
-    analytics?.items?.reduce(
-      (sum, i) => sum + (i.itemTotalNetAmount || 0),
-      0
-    ) || 0;
+    analytics?.items?.reduce((s, i) => s + Number(i.netAmount || 0), 0) || 0;
 
   const itemsPerOrder =
     totalOrders ? (totalItemQty / totalOrders).toFixed(2) : "—";
@@ -217,11 +197,9 @@ export default function Dashboard() {
   const formatCurrency = (n) =>
     `₹${Number(n || 0).toLocaleString("en-IN")}`;
 
-  /* ---------------- UI ---------------- */
   return (
     <div className="min-h-screen bg-slate-50 px-6 py-10">
       <div className="mx-auto max-w-7xl space-y-8">
-        {/* HEADER */}
         <header className="rounded-2xl bg-[url('/assets/Main-bg.png')] bg-cover p-8 shadow ring-1">
           <div className="flex justify-between items-center">
             <div>
@@ -246,7 +224,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* FILTERS */}
           <div className="mt-6 grid md:grid-cols-3 gap-6">
             <div>
               <label className="text-sm font-medium mb-2 block">
@@ -261,7 +238,7 @@ export default function Dashboard() {
                       checked={selectedBranches.includes(b)}
                       onChange={() => handleBranchChange(b)}
                     />
-                    {BRANCH_LABELS[b] || b}
+                    {BRANCH_LABELS[b]}
                   </label>
                 ))}
               </div>
@@ -269,15 +246,16 @@ export default function Dashboard() {
 
             <div>
               <label className="text-sm font-medium mb-2 block">
-                Period (YYYY/MM) *
+                Day (YYYY-MM-DD) *
               </label>
+
               <input
                 type="text"
-                placeholder="2025/01"
-                value={date}
-                maxLength={7}
+                placeholder="2025-01-31"
+                value={day}
+                maxLength={10}
                 onChange={(e) =>
-                  setDate(e.target.value.replace(/[^0-9/]/g, ""))
+                  setDay(e.target.value.replace(/[^0-9-]/g, ""))
                 }
                 className="w-full border rounded-lg px-3 py-2"
               />
@@ -294,24 +272,21 @@ export default function Dashboard() {
           </div>
         </header>
 
-        {/* LOADING */}
         {loading && <p className="text-center">Loading…</p>}
 
-        {/* ❌ NO DATA */}
         {analytics && !loading && analytics.noData && (
           <div className="text-center bg-white p-10 rounded-2xl shadow border">
             <h2 className="text-2xl font-bold mb-2">No data found</h2>
             <p className="text-gray-600">Please check:</p>
 
             <ul className="mt-3 text-gray-700">
-              <li>✔️ Month format must be YYYY/MM</li>
+              <li>✔️ Correct date format YYYY-MM-DD</li>
               <li>✔️ Correct branch selected</li>
-              <li>✔️ Brand active on Rista</li>
+              <li>✔️ Sales exist on that day</li>
             </ul>
           </div>
         )}
 
-        {/* ANALYTICS + STOCK */}
         {analytics && !loading && !analytics.noData && (
           <div className="bg-[#111] text-white rounded-2xl p-8 space-y-12">
             <h2 className="text-3xl font-bold mb-3">Analytics</h2>
@@ -335,61 +310,6 @@ export default function Dashboard() {
                 title="Avg Item Selling Price"
                 value={formatCurrency(avgItemSellingPrice)}
               />
-            </div>
-
-            {/* ---------- STOCK STATUS ---------- */}
-            <div className="bg-[#181818] p-6 rounded-xl border border-gray-700">
-              <h3 className="text-2xl font-semibold mb-4">Stock Status</h3>
-
-              {!lowStockItems || lowStockItems.length === 0 ? (
-                <p className="text-gray-400">
-                  No stock alerts right now 🎉 Everything looks good.
-                </p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm">
-                    <thead>
-                      <tr className="text-gray-400 border-b border-gray-700">
-                        <th className="text-left py-2">Item</th>
-                        <th className="text-left py-2">Status</th>
-                        <th className="text-left py-2">Quantity</th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {lowStockItems.map((item, i) => {
-                        const qty = Number(item.quantity || 0);
-                        const status = item.status;
-
-                        return (
-                          <tr key={i} className="border-b border-gray-800">
-                            <td className="py-2">
-                              {item.name || "Unnamed Item"}
-                            </td>
-
-                            <td className="py-2">
-                              {status === "Out of Stock" && (
-                                <span className="text-red-400 font-semibold">
-                                  Out of Stock
-                                </span>
-                              )}
-                              {status === "Low Stock" && (
-                                <span className="text-yellow-400 font-semibold">
-                                  Low Stock
-                                </span>
-                              )}
-                            </td>
-
-                            <td className="py-2">
-                              {qty} {item.unit || ""}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
             </div>
           </div>
         )}
