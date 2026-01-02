@@ -90,16 +90,24 @@ export default function ProductUpload() {
     setLoading(true);
 
     try {
-      const payload = {
+    const payload = {
         ...formData,
         baseCost,
         totalAmount: totalCost,
-        uploadedAt: new Date().toISOString(),
-      };
+    };
 
-      console.log("Final Payload", payload);
+    const res = await fetch("http://localhost:5002/api/products", {
+        method: "POST",
+        headers: {
+        "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+    });
 
-      alert("Product uploaded!");
+    if (!res.ok) throw new Error("Failed to upload");
+
+    alert("Product uploaded successfully!");
+
 
       // reset
       setFormData({
