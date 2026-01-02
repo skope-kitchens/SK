@@ -31,7 +31,13 @@ const Navigation = () => {
   }, [])
 
   const handleAvatarClick = () => {
-    navigate('/dashboard')
+    const userType = localStorage.getItem("userType");
+
+  if (userType === "vendor") {
+    navigate("/vendor-dashboard");
+  } else {
+    navigate("/dashboard");
+  }
   }
 
   return (

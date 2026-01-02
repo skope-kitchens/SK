@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../utils/api";
+import Layout from "../components/Layout";
 
 const BRANCH_OPTIONS = ["BEN", "MAR", "JNG", "KOR", "HO"];
 
@@ -198,6 +199,7 @@ export default function Dashboard() {
     `₹${Number(n || 0).toLocaleString("en-IN")}`;
 
   return (
+    <Layout>
     <div className="min-h-screen bg-slate-50 px-6 py-10">
       <div className="mx-auto max-w-7xl space-y-8">
         <header className="rounded-2xl bg-[url('/assets/Main-bg.png')] bg-cover p-8 shadow ring-1">
@@ -315,6 +317,7 @@ export default function Dashboard() {
         )}
       </div>
     </div>
+    </Layout>
   );
 }
 

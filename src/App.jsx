@@ -14,6 +14,8 @@ import Product from './pages/Product'
 import Cart from './pages/Cart'
 import Category from './pages/Category'
 import ScrollToTop from './components/ScrollToTop'
+import ProductUpload from './pages/ProductUpload'
+import VendorDashboard from './pages/VendorDashboard'
 
 
 function App() {
@@ -37,11 +39,12 @@ function App() {
         <Route path="/result" element={<Result />} />
         <Route path="/contact-us" element={<ContactUs />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/vendor-dashboard" element={<VendorDashboard />} />
         <Route path="/shop" element={<Shop />} />
         <Route path="/product/:itemName" element={<Product />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/category/:categoryName" element={<Category />}/>
-        
+        <Route path="/product-upload" element={<ProductUpload />}/>
       </Routes>
     </Router>
   )

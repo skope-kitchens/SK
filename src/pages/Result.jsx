@@ -218,7 +218,7 @@ const Result = () => {
                   </span>
                 </Link>
                 <Link
-                  to="https://www.skopekitchens.com/schedule-a-call"
+                  to="contact-us"
                   className="inline-flex items-center justify-center px-8 py-4 bg-black text-white text-lg font-medium rounded-lg shadow-md transition-colors group"
                 >
                   <span className="relative block overflow-hidden">
