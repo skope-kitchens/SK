@@ -31,14 +31,20 @@ const Navigation = () => {
   }, [])
 
   const handleAvatarClick = () => {
-    const userType = localStorage.getItem("userType");
+  const user = authUtils.getUser();
+  const storedType =
+    localStorage.getItem("userType") ||
+    user?.role ||
+    user?.userType ||
+    "";
 
-  if (userType === "vendor") {
+  if (storedType === "vendor") {
     navigate("/vendor-dashboard");
   } else {
     navigate("/dashboard");
   }
-  }
+};
+
 
   return (
     <nav className="bg-white shadow-sm border-b w-9/12 mx-auto mt-4 rounded-full border-gray-100">
