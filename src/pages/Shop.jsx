@@ -29,11 +29,8 @@ const Shop = () => {
   // -----------------------------
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
-      const name =
-        product["Supplier Item Name"] ||
-        product.name ||
-        product["supplierItemName"] ||
-        "";
+      const name = product.itemName || "";
+
 
       return name.toLowerCase().includes(search.toLowerCase());
     });
@@ -46,8 +43,8 @@ const Shop = () => {
     const categorySet = new Set();
 
     filteredProducts.forEach((product) => {
-      if (product["Category"]) {
-        categorySet.add(product["Category"]);
+      if (product.category) {
+      categorySet.add(product.category);
       }
     });
 
@@ -169,20 +166,20 @@ const Shop = () => {
                 <div key={product._id || index} className="text-center">
                   <div className="bg-gray-200 h-56 rounded-lg mb-4 overflow-hidden">
                     <img
-                      src={product["image_url"]}
-                      alt={product["Supplier Item Name"]}
+                      src={product.image_url || "/assets/placeholder.jpg"}
+                      alt={product.itemName}
                       className="w-full h-full object-cover"
                     />
+
                   </div>
 
                   <p className="font-semibold mb-2">
-                    {product["Supplier Item Name"]}
+                    {product.itemName}
                   </p>
 
                   <Link
-                    to={`/product/${encodeURIComponent(
-                      product["Supplier Item Name"]
-                    )}`}
+                    to={`/product/${encodeURIComponent(product.itemName)}`}
+
                   >
                     <button className="bg-black text-white w-full py-2 rounded hover:bg-gray-800 transition">
                       Add to cart →
