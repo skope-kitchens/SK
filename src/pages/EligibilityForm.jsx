@@ -46,7 +46,8 @@ const EligibilityForm = () => {
     specialReportingIntegrations: '',
     equipmentAvailability: '',
     // Meta
-    howDidYouHear: ''
+    howDidYouHear: '',
+    attachments: []
   })
 
   const [errors, setErrors] = useState({})
@@ -68,6 +69,15 @@ const EligibilityForm = () => {
       }))
     }
   }
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+
+    setFormData(prev => ({
+      ...prev,
+      attachments: files
+    }));
+  };
 
   const handleCheckboxChange = (name, option) => {
     setFormData(prev => {
@@ -205,51 +215,75 @@ const EligibilityForm = () => {
   }
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+  e.preventDefault();
 
-    if (!validate()) {
-      return
-    }
+  if (!validate()) return;
 
-    setLoading(true)
-    setStatus({ type: '', message: '' })
+  setLoading(true);
+  setStatus({ type: "", message: "" });
 
-    const user = authUtils.getUser()
-    const payload = {
-      ...formData,
-      submittedBy: user?.id || null,
-      submittedByEmail: user?.email || null
-    }
+  try {
+    const user = authUtils.getUser();
 
+    const fd = new FormData();
+
+    // append all normal fields
+    Object.entries(formData).forEach(([key, value]) => {
+      if (key === "attachments") return;
+      fd.append(key, value);
+    });
+
+    // meta fields
+    fd.append("submittedBy", user?.id || "");
+    fd.append("submittedByEmail", user?.email || "");
+
+    // append files
+    (formData.attachments || []).forEach((file) => {
+      fd.append("attachments", file);
+    });
+
+    // ONLY ONE REQUEST — multipart/form-data
+    const response = await api.post("/api/eligibility", fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+    // Save results to localStorage
     try {
-      const response = await api.post('/api/eligibility', payload)
-
-      // Store score result, AI summary, and brand name from backend response
-      try {
-        localStorage.setItem('selectedBrandName', formData.brandName.trim())
-        localStorage.setItem('eligibilityScore', JSON.stringify({
+      localStorage.setItem("selectedBrandName", formData.brandName.trim());
+      localStorage.setItem(
+        "eligibilityScore",
+        JSON.stringify({
           score: response.data.score,
           decision: response.data.decision,
           meetsThreshold: response.data.meetsThreshold,
           sectionScores: response.data.sectionScores,
           brandName: formData.brandName.trim(),
-          aiAnalysisSummary: response.data.aiAnalysisSummary
-        }))
-      } catch (storageError) {
-        console.error('Unable to cache score or brand name', storageError)
-      }
-
-      setStatus({ type: 'success', message: 'Submission received! Analyzing...' })
-      setTimeout(() => navigate('/analyzing'), 600)
-    } catch (error) {
-      const message =
-        error.response?.data?.message ||
-        'Unable to submit the eligibility form. Please try again.'
-      setStatus({ type: 'error', message })
-    } finally {
-      setLoading(false)
+          aiAnalysisSummary: response.data.aiAnalysisSummary,
+        })
+      );
+    } catch (err) {
+      console.error("Unable to cache score or brand name", err);
     }
+
+    setStatus({
+      type: "success",
+      message: "Submission received! Analyzing...",
+    });
+
+    setTimeout(() => navigate("/analyzing"), 600);
+  } catch (error) {
+    console.error(error);
+
+    const message =
+      error.response?.data?.message ||
+      "Unable to submit the eligibility form. Please try again.";
+
+    setStatus({ type: "error", message });
+  } finally {
+    setLoading(false);
   }
+};
+
 
   return (
     <Layout>
@@ -688,7 +722,57 @@ const EligibilityForm = () => {
                       <p className="mt-1 text-sm text-red-600">{errors.smallwaresCost}</p>
                     )}
                   </div>
+
+                  
                 </div>
+                {/* Attachments Section */}
+                  <div className="card">
+                    <h2 className="text-xl font-semibold text-gray-900 mb-6 pb-3 border-b border-gray-200">
+                      Supporting Attachments (Excel Uploads)
+                    </h2>
+
+                    <p className="text-sm text-gray-600 mb-4">
+                      Please upload Excel file to speed up evaluation. Upload all of the
+                      following (combined in one Excel file):
+                    </p>
+
+                    <ul className="list-disc ml-6 text-sm text-gray-700 mb-6 space-y-1">
+                      <li><b>Menu List</b> – item name, category, selling price, portion size</li>
+                      <li><b>Equipment List</b> – equipment name, quantity, capacity, ownership (rent/buy)</li>
+                      <li><b>Smallwares List</b> – utensils, tools, qty required</li>
+                      <li><b>Ingredients List</b> – raw material, supplier, pack size, unit cost</li>
+                    </ul>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-900 mb-2">
+                        Upload Excel files (.xls, .xlsx, .csv) — multiple allowed
+                      </label>
+
+                      <input
+                        type="file"
+                        accept=".xls,.xlsx,.csv"
+                        multiple
+                        onChange={handleFileChange}
+                        className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none"
+                      />
+
+                      <p className="text-xs text-gray-500 mt-2">
+                        Combine all data in a single Excel file .
+                      </p>
+
+                      {/* Show selected files */}
+                      {formData.attachments?.length > 0 && (
+                        <div className="mt-3 bg-gray-50 border rounded-lg p-3">
+                          <p className="text-sm font-medium text-gray-900 mb-2">Selected files:</p>
+                          <ul className="text-sm text-gray-700 list-disc ml-6 space-y-1">
+                            {formData.attachments.map((file, i) => (
+                              <li key={i}>{file.name}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </div>
               </div>
             </div>
 
