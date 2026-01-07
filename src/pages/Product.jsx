@@ -4,7 +4,6 @@ import { useParams, Link } from "react-router-dom";
 import axios from "axios";
 import { useCart } from "../context/CartContext";
 
-
 export default function Product() {
   const { addToCart } = useCart();
   const { itemName } = useParams();
@@ -14,16 +13,25 @@ export default function Product() {
   const [allProducts, setAllProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // 1️⃣ Fetch products
   useEffect(() => {
     axios.get(`${API}/api/products`)
       .then(res => {
         setAllProducts(res.data);
 
-        const filtered = res.data.filter(
-          p => p["Supplier Item Name"] === decodeURIComponent(itemName)
-        );
+        const routeName = decodeURIComponent(itemName)
+          .trim()
+          .toLowerCase();
 
-        setOffers(filtered);
+        const matched = res.data.filter(p => {
+          const dbName = String(p.itemName || "")
+            .trim()
+            .toLowerCase();
+
+          return dbName === routeName;
+        });
+
+        setOffers(matched);
         setLoading(false);
       })
       .catch(err => {
@@ -32,11 +40,11 @@ export default function Product() {
       });
   }, [itemName]);
 
-  // ✅ ALWAYS called (no conditional hooks)
+  // 2️⃣ Unique vendor offers
   const uniqueOffers = useMemo(() => {
     const seen = new Set();
     return offers.filter(o => {
-      const supplier = o["Supplier Name"];
+      const supplier = o.supplierName;
       if (!supplier) return true;
       if (seen.has(supplier)) return false;
       seen.add(supplier);
@@ -44,18 +52,20 @@ export default function Product() {
     });
   }, [offers]);
 
-  const category = offers[0]?.["Category"];
-  const productName = offers[0]?.["Supplier Item Name"];
+  const category = offers[0]?.category;
+  const productName = offers[0]?.itemName;
 
-  // ✅ Recommended products (same category, different item name)
+  // 3️⃣ Recommended products
   const recommendedProducts = useMemo(() => {
     if (!category) return [];
 
     const seen = new Set();
+
     return allProducts.filter(p => {
-      const name = p["Supplier Item Name"];
+      const name = p.itemName;
+
       if (
-        p["Category"] === category &&
+        p.category === category &&
         name !== productName &&
         !seen.has(name)
       ) {
@@ -66,7 +76,7 @@ export default function Product() {
     }).slice(0, 4);
   }, [allProducts, category, productName]);
 
-  // ✅ Loading handled AFTER hooks
+  // 4️⃣ Loading states
   if (loading) {
     return (
       <Layout>
@@ -83,113 +93,100 @@ export default function Product() {
     );
   }
 
+  // 5️⃣ UI
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 py-10">
 
-        {/* Product Header */}
-        <h1 className="text-4xl font-bold mb-2">
-          {productName}
-        </h1>
+        <h1 className="text-4xl font-bold mb-2">{productName}</h1>
+
         <p className="text-gray-500 mb-10">
           Category: {category}
         </p>
 
-        {/* Vendor Offers */}
-        <div className="grid grid-cols-1 md:grid-cols-2  gap-8 mb-20">
+        {/* Vendor offers */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-20">
           {uniqueOffers.map(offer => (
             <div
-              key={offer._id}
-              className="border flex justify-evenly items-center rounded-xl p-6 shadow-sm bg-cover bg-center bg-[url('/assets/Main-bg.png')]"
+              key={offer.itemName + offer.supplierName}
+              className="border rounded-xl p-6 shadow-sm flex justify-between"
             >
-              <div className="part1 w-6/12 h-[150px] flex justify-center items-center ">
-                <img className="w-8/12 h-120px" src={offer["image_url"]} alt="" />
+              <div className="w-5/12 flex justify-center">
+                <img
+                  src={offer.image_url}
+                  alt={offer.itemName}
+                  className="h-40 object-contain"
+                />
               </div>
-              
 
-              <div className="part2 w-6/12 ">
-                <h3 className="font-semibold text-lg mb-2">
-                {offer["Supplier Name"]}
-              </h3>
+              <div className="w-7/12">
+                <h3 className="font-semibold text-lg">{offer.supplierName}</h3>
+                <h3 className="text-lg">{offer.itemName}</h3>
+
                 <p className="text-sm text-gray-500 mb-2">
-                SKU: {offer["Supplier SKU"]}
-              </p>
+                  Unit: {offer.unit}
+                </p>
 
-              <p className="text-2xl font-bold mb-4">
-                ₹{offer["Supplier Unit Cost"]}
-                <span className="text-sm text-gray-500">
-                  {" "} / {offer["Supplier Unit"]}
-                </span>
-              </p>
+                <p className="text-2xl font-bold mb-2">
+                  ₹{offer.unitCost}
+                </p>
 
-              <div className="text-sm text-gray-600 space-y-1">
-                <p>Available Qty: {offer["Supplier Qty"]}</p>
-                <p>Tax: {offer["Tax %"]}</p>
-                <p>Net Unit Price: ₹{offer["Net Amount per Unit"]}</p>
+                <p className="text-sm text-gray-600 mb-1">
+                  Available Qty: {offer.totalQty}
+                </p>
+
+                <button
+                  onClick={() => {
+                    addToCart({
+                      id: offer.itemName + offer.supplierName,
+                      name: offer.itemName,
+                      price: offer.unitCost,
+                      supplier: offer.supplierName,
+                      unit: offer.unit,
+                    });
+
+                    alert("Product added to cart");
+                  }}
+                  className="mt-3 w-full bg-black text-white py-2 rounded-full"
+                >
+                  Add to cart →
+                </button>
               </div>
-              <button
-                onClick={() => {
-                  const priceSource =
-                    offer["Net Amount per Unit"] ??
-                    offer["Supplier Unit Cost"] ??
-                    0;
-                  alert("Product added to cart");
-                  const cleanPrice = parseFloat(
-                    String(priceSource).replace(/[^0-9.]/g, "")
-                  );
-
-                  addToCart({
-                    id: offer._id,
-                    name: offer["Supplier Item Name"],
-                    price: cleanPrice || 0,   // 🔒 never NaN
-                    supplier: offer["Supplier Name"],
-                    unit: offer["Supplier Unit"]
-                  });
-                }}
-                className="mt-4 w-full bg-black text-white rounded-full py-2 hover:bg-gray-800"
-              >
-                Add to cart →
-              </button>
-              </div>
-
-              
-
-
             </div>
           ))}
         </div>
 
-        {/* Recommended Products */}
+        {/* Recommended */}
         {recommendedProducts.length > 0 && (
           <>
-            <h2 className="text-3xl font-bold mb-8">
+            <h2 className="text-2xl font-bold mb-6">
               Recommended Products
             </h2>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
-              {recommendedProducts.map(prod => (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {recommendedProducts.map(p => (
                 <Link
-                  key={prod._id}
-                  to={`/product/${encodeURIComponent(
-                    prod["Supplier Item Name"]
-                  )}`}
-                  className="border rounded-xl p-4 text-center hover:shadow-lg transition"
+                  key={p.itemName}
+                  to={`/product/${encodeURIComponent(p.itemName)}`}
+                  className="border rounded-xl p-4 text-center"
                 >
-                  <div className="bg-gray-200 h-64 rounded mb-3" ><img className="w-full h-full contain-cover" src={prod["image_url"]} alt="" /></div>
-                  <p className="font-semibold">
-                    {prod["Supplier Item Name"]}
-                  </p>
+                  <div className="h-40 bg-gray-100 mb-3">
+                    <img
+                      src={p.image_url}
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+
+                  <p className="font-semibold">{p.itemName}</p>
                 </Link>
               ))}
             </div>
           </>
         )}
 
-        {/* Back */}
-        <Link to={`/category/${category}`} className="text-blue-600">
+        <Link to={`/category/${category}`} className="text-blue-600 mt-6 block">
           ← Back to category
         </Link>
-
       </div>
     </Layout>
   );

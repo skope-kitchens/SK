@@ -4,40 +4,56 @@ import { useParams, Link } from "react-router-dom";
 import axios from "axios";
 
 export default function Category() {
-  const { categoryName } = useParams(); // 👈 from URL
+  const { categoryName } = useParams();
   const API = import.meta.env.VITE_API_BASE_URL;
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(categoryName);
 
+  // 1️⃣ Load all products
   useEffect(() => {
-    axios.get(`${API}/api/products`)
-      .then(res => {
+    axios
+      .get(`${API}/api/products`)
+      .then((res) => {
         setProducts(res.data);
 
+        // build category list
         const uniqueCategories = [
-          ...new Set(res.data.map(p => p["Category"]))
-        ];
+          ...new Set(res.data.map((p) => p.category || "")),
+        ].filter(Boolean);
+
         setCategories(uniqueCategories);
       })
       .catch(console.error);
   }, []);
 
-  // Update when URL changes
+  // 2️⃣ Update when route changes
   useEffect(() => {
     setSelectedCategory(categoryName);
   }, [categoryName]);
 
+  // 3️⃣ Filter products by category
   const filteredProducts = useMemo(() => {
-    return products.filter(p => p["Category"] === selectedCategory);
+    const routeCategory = String(selectedCategory || "")
+      .trim()
+      .toLowerCase();
+
+    return products.filter((p) => {
+      const dbCategory = String(p.category || "")
+        .trim()
+        .toLowerCase();
+
+      return dbCategory === routeCategory;
+    });
   }, [products, selectedCategory]);
 
+  // 4️⃣ Ensure unique products by itemName
   const uniqueFilteredProducts = useMemo(() => {
     const seen = new Set();
-    return filteredProducts.filter(p => {
-      const name = p["Supplier Item Name"] || p.name || p["supplierItemName"];
-      if (!name) return true;
+    return filteredProducts.filter((p) => {
+      const name = p.itemName;
+      if (!name) return false;
       if (seen.has(name)) return false;
       seen.add(name);
       return true;
@@ -52,12 +68,12 @@ export default function Category() {
         </h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-10">
-          
           {/* Sidebar */}
           <aside className="hidden lg:block bg-white rounded-xl p-6 shadow sticky top-20 h-fit">
             <div className="space-y-2">
               <h1 className="font-bold text-2xl ml-4 pb-4">Categories</h1>
-              {categories.map(cat => (
+
+              {categories.map((cat) => (
                 <Link key={cat} to={`/category/${cat}`}>
                   <button
                     className={`w-full text-left px-4 py-2 rounded-lg font-medium transition ${
@@ -81,36 +97,34 @@ export default function Category() {
               </p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                {uniqueFilteredProducts.map(product => (
+                {uniqueFilteredProducts.map((product) => (
                   <div
-                    key={product._id}
+                    key={product.itemName}
                     className="bg-white rounded-xl p-6 text-center shadow hover:shadow-lg transition"
                   >
                     <div className="h-48 rounded-lg overflow-hidden mb-4 bg-gray-100">
-                      {product["image_url"] && (
+                      {product.image_url && (
                         <img
-                          src={product["image_url"]}
-                          alt={product["Supplier Item Name"]}
+                          src={product.image_url}
+                          alt={product.itemName}
                           className="w-full h-full object-cover"
                         />
                       )}
                     </div>
 
-                    <h3 className="font-semibold">
-                      {product["Supplier Item Name"]}
-                    </h3>
+                    <h3 className="font-semibold">{product.itemName}</h3>
+
                     <Link
-    to={`/product/${encodeURIComponent(product["Supplier Item Name"])}`}
-    className="block bg-black text-white w-full py-2 rounded hover:bg-gray-800 transition text-center"
-  >
-    View product →
-  </Link>
+                      to={`/product/${encodeURIComponent(product.itemName)}`}
+                      className="block bg-black text-white w-full py-2 rounded hover:bg-gray-800 transition text-center"
+                    >
+                      View product →
+                    </Link>
                   </div>
                 ))}
               </div>
             )}
           </section>
-
         </div>
       </main>
     </Layout>

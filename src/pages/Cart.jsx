@@ -95,12 +95,31 @@ export default function Cart() {
             }
           );
 
-          // -------------------------
-          // CLEAR CART 🎉
-          // -------------------------
+          // --------------------------------------
+          // 3️⃣ Deduct stock from database
+          // --------------------------------------
+          await fetch(
+            `${import.meta.env.VITE_API_BASE_URL}/api/products/checkout`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                items: cartItems.map(i => ({
+                  supplierName: i.supplier,
+                  itemName: i.name,
+                  qty: i.quantity
+                }))
+              })
+            }
+          );
+
+          // --------------------------------------
+          // 4️⃣ Clear cart AFTER stock updated
+          // --------------------------------------
           clearCart();
 
-          alert("Payment successful 🎉 Order placed!");
+          alert("Payment successful 🎉 Stock updated & order placed!");
+
         },
 
         theme: { color: "#000000" },
