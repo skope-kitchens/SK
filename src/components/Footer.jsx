@@ -15,15 +15,15 @@ const Footer = ()=>{
             <div>
               <h4 className="font-semibold mb-4 text-white">PAGES</h4>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li> <Link>Home</Link></li>
-                <li><Link>Contact Us</Link></li>
+                <li> <Link to="/">Home</Link></li>
+                <li><Link to="/contact-us">Contact Us</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold mb-4 text-white">RESOURCES</h4>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li><a href="#" className="hover:text-white transition-colors">Careers</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Blogs</a></li>
+                <li><a href="/shop" className="hover:text-white transition-colors">Shop</a></li>
+                <li><a href="https://www.skopekitchens.com/blog" className="hover:text-white transition-colors">Blogs</a></li>
               </ul>
             </div>
             <div>

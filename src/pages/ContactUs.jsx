@@ -75,7 +75,7 @@ const handleSchedule = async (team) => {
   }
 
   const ok = window.confirm(
-    "Do you really want to schedule this meeting?\n20 credits will be deducted."
+    "Do you really want to schedule this meeting?\n30 credits will be deducted."
   );
 
   if (!ok) return;
