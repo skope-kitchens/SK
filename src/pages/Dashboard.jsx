@@ -1,5 +1,3 @@
-// 🔹 ONLY paste this whole file as Dashboard.jsx
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../utils/api";
@@ -15,23 +13,25 @@ const BRANCH_LABELS = {
   HO: "Head Office",
 };
 
-// 👉 map UI branch → Rista branchCode
-const RISTA_BRANCH_MAP = {
-  BEN: "AMS",
-  MAR: "MAR",
-  JNG: "JNG",
-  KOR: "KOR",
-  HO: "HO",
-};
-
 export default function Dashboard() {
   const navigate = useNavigate();
 
+  /* ---------------- STATE ---------------- */
   const [analytics, setAnalytics] = useState(null);
-  const [lowStockItems, setLowStockItems] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  const [clientAnalytics, setClientAnalytics] = useState(null);
+  const [clientLoading, setClientLoading] = useState(false);
+
   const [credits, setCredits] = useState(null);
 
+  const [selectedBranches, setSelectedBranches] = useState([]);
+  const [day, setDay] = useState("");
+
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+
+  /* ---------------- TOKEN ---------------- */
   function getTokenSafely() {
     try {
       return (
@@ -44,7 +44,7 @@ export default function Dashboard() {
     }
   }
 
-  /* ---------------- FETCH REMAINING CREDITS ---------------- */
+  /* ---------------- CREDITS ---------------- */
   useEffect(() => {
     const fetchCredits = async () => {
       const token = getTokenSafely();
@@ -63,7 +63,7 @@ export default function Dashboard() {
     fetchCredits();
   }, []);
 
-  /* ---------------- USER DETAILS ---------------- */
+  /* ---------------- USER ---------------- */
   let storedUser = null;
   try {
     storedUser =
@@ -73,9 +73,7 @@ export default function Dashboard() {
 
   const brandName = storedUser?.brandName || "Your Brand";
 
-  const [selectedBranches, setSelectedBranches] = useState([]);
-  const [day, setDay] = useState("");
-
+  /* ---------------- BRANCH HANDLER ---------------- */
   const handleBranchChange = (branch) => {
     setSelectedBranches((prev) =>
       prev.includes(branch)
@@ -84,63 +82,10 @@ export default function Dashboard() {
     );
   };
 
-  /* ---------------- FETCH STOCK ---------------- */
-  const fetchStockReport = async () => {
-    try {
-      const firstBranch = selectedBranches[0];
-      if (!firstBranch) return;
-
-      const branchCode = RISTA_BRANCH_MAP[firstBranch];
-
-      const res = await api.get("/api/stock/items", {
-        params: {
-          brandName,
-          branchLabel: BRANCH_LABELS[firstBranch],
-        },
-      });
-
-      let items =
-        res.data?.data ||
-        res.data?.items ||
-        res.data?.results ||
-        res.data ||
-        [];
-
-      if (!Array.isArray(items)) {
-        items = items.data || items.items || [];
-      }
-      if (!Array.isArray(items)) items = [];
-
-      const simplified = items.map((i) => {
-        const qty = Number(i.itemQty ?? i.quantity ?? 0);
-
-        let status;
-        if (qty <= 0) status = "Out of Stock";
-        else if (qty < 5) status = "Low Stock";
-        else status = "In Stock";
-
-        return {
-          name: i.name || i.itemName || "Unnamed",
-          quantity: qty,
-          unit: i.measuringUnit || i.unit || "",
-          status,
-        };
-      });
-
-      const alerts = simplified.filter(
-        (i) => i.status === "Low Stock" || i.status === "Out of Stock"
-      );
-
-      setLowStockItems(alerts);
-    } catch {
-      setLowStockItems([]);
-    }
-  };
-
-  /* ---------------- FETCH ANALYTICS ---------------- */
+  /* ---------------- DAILY ANALYTICS ---------------- */
   const fetchAnalytics = async () => {
     if (selectedBranches.length === 0 || !/^\d{4}-\d{2}-\d{2}$/.test(day)) {
-      alert("Please select branches and date as YYYY-MM-DD");
+      alert("Select branches and date (YYYY-MM-DD)");
       return;
     }
 
@@ -148,16 +93,10 @@ export default function Dashboard() {
 
     try {
       const res = await api.get("/api/analytics/sales/summary", {
-        params: {
-          branches: selectedBranches,
-          day, // 👈 IMPORTANT — send YYYY-MM-DD
-        },
+        params: { branches: selectedBranches, day },
       });
-
       setAnalytics(res.data);
-      await fetchStockReport();
-    } catch (err) {
-      console.error(err);
+    } catch {
       alert("Failed to load analytics");
       setAnalytics(null);
     } finally {
@@ -165,21 +104,107 @@ export default function Dashboard() {
     }
   };
 
+  /* ---------------- CLIENT RANGE ANALYTICS ---------------- */
+  const fetchClientAnalytics = async () => {
+  if (!fromDate || !toDate || selectedBranches.length === 0) {
+    alert("Select branches, FROM date and TO date");
+    return;
+  }
+
+  setClientLoading(true);
+
+  try {
+    const start = new Date(fromDate);
+    const end = new Date(toDate);
+
+    let cursor = new Date(start);
+
+    const aggregate = {
+      noOfSales: 0,
+      revenue: 0,
+      netAmount: 0,
+      taxTotal: 0,
+      discountTotal: 0,
+      items: [],
+    };
+
+    const itemMap = {};
+
+    while (cursor <= end) {
+      const dayStr = cursor.toISOString().slice(0, 10);
+
+      try {
+        const res = await api.get("/api/analytics/sales/summary", {
+          params: {
+            branches: selectedBranches,
+            day: dayStr,
+          },
+        });
+
+        const data = res.data;
+
+        if (!data || data.noData) {
+          cursor.setDate(cursor.getDate() + 1);
+          continue;
+        }
+
+        aggregate.noOfSales += Number(data.noOfSales || 0);
+        aggregate.revenue += Number(data.revenue || 0);
+        aggregate.netAmount += Number(data.netAmount || 0);
+        aggregate.taxTotal += Number(data.taxTotal || 0);
+        aggregate.discountTotal += Number(data.discountTotal || 0);
+
+        (data.items || []).forEach((i) => {
+          const key = i.name || i.itemName || "Unknown";
+
+          if (!itemMap[key]) {
+            itemMap[key] = {
+              name: key,
+              quantity: 0,
+              netAmount: 0,
+            };
+          }
+
+          itemMap[key].quantity += Number(i.quantity || 0);
+          itemMap[key].netAmount += Number(i.netAmount || 0);
+        });
+      } catch {
+        // silently skip failed days
+      }
+
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    aggregate.items = Object.values(itemMap);
+
+    // derived avg sale
+    aggregate.avgSaleAmount = aggregate.noOfSales
+      ? aggregate.revenue / aggregate.noOfSales
+      : 0;
+
+    setClientAnalytics(aggregate);
+  } catch (err) {
+    console.error(err);
+    alert("Failed to aggregate analytics");
+    setClientAnalytics(null);
+  } finally {
+    setClientLoading(false);
+  }
+};
+
+
   const handleLogout = () => {
-    try {
-      sessionStorage.clear();
-      localStorage.clear();
-    } catch {}
+    sessionStorage.clear();
+    localStorage.clear();
     navigate("/");
   };
 
-  /* ---------------- DERIVED KPIs ---------------- */
+  /* ---------------- DERIVED KPIs (SAME AS EARLIER) ---------------- */
   const totalOrders = analytics?.noOfSales ?? 0;
   const revenue = analytics?.revenue ?? 0;
   const netRevenue = analytics?.netAmount ?? 0;
   const taxTotal = analytics?.taxTotal ?? 0;
   const discountTotal = analytics?.discountTotal ?? 0;
-
   const aov = analytics?.avgSaleAmount ?? 0;
   const revenuePerOrder = aov;
 
@@ -200,132 +225,201 @@ export default function Dashboard() {
 
   return (
     <Layout>
-    <div className="min-h-screen bg-slate-50 px-6 py-10">
-      <div className="mx-auto max-w-7xl space-y-8">
-        <header className="rounded-2xl bg-[url('/assets/Main-bg.png')] bg-cover p-8 shadow ring-1">
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="text-xs uppercase tracking-[0.25em] text-slate-500">
-                Brand Dashboard
-              </p>
-              <h1 className="mt-1 text-3xl font-semibold">{brandName}</h1>
-            </div>
+      <div className="min-h-screen bg-slate-50 px-6 py-10">
+        <div className="mx-auto max-w-7xl space-y-10">
 
-            <div className="flex items-center gap-4">
-              <div className="bg-white text-black px-4 py-2 rounded-xl shadow">
-                <span className="font-semibold">Credits:</span>{" "}
-                {credits === null ? "Login required" : credits}
+          {/* ---------------- HEADER ---------------- */}
+          <header className="rounded-2xl bg-[url('/assets/Main-bg.png')] bg-cover p-8 shadow">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-xs uppercase tracking-widest text-slate-500">
+                  Brand Dashboard
+                </p>
+                <h1 className="text-3xl font-semibold">{brandName}</h1>
               </div>
 
-              <button
-                onClick={handleLogout}
-                className="px-4 py-2 bg-black text-white rounded-lg"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-6 grid md:grid-cols-3 gap-6">
-            <div>
-              <label className="text-sm font-medium mb-2 block">
-                Select Branches *
-              </label>
-
-              <div className="grid grid-cols-3 gap-2">
-                {BRANCH_OPTIONS.map((b) => (
-                  <label key={b} className="flex gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={selectedBranches.includes(b)}
-                      onChange={() => handleBranchChange(b)}
-                    />
-                    {BRANCH_LABELS[b]}
-                  </label>
-                ))}
+              <div className="flex gap-4">
+                <div className="bg-white px-4 py-2 rounded-xl shadow">
+                  Credits: {credits ?? "—"}
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="bg-black text-white px-4 py-2 rounded-lg"
+                >
+                  Logout
+                </button>
               </div>
             </div>
 
-            <div>
-              <label className="text-sm font-medium mb-2 block">
-                Day (YYYY-MM-DD) *
-              </label>
+            <div className="mt-6 grid md:grid-cols-3 gap-6">
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Branches
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {BRANCH_OPTIONS.map((b) => (
+                    <label key={b} className="flex gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={selectedBranches.includes(b)}
+                        onChange={() => handleBranchChange(b)}
+                      />
+                      {BRANCH_LABELS[b]}
+                    </label>
+                  ))}
+                </div>
+              </div>
 
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Day (YYYY-MM-DD)
+                </label>
+                <input
+                  value={day}
+                  onChange={(e) =>
+                    setDay(e.target.value.replace(/[^0-9-]/g, ""))
+                  }
+                  className="w-full border rounded-lg px-3 py-2"
+                />
+              </div>
+
+              <div className="flex items-end">
+                <button
+                  onClick={fetchAnalytics}
+                  className="w-full bg-black text-white py-2 rounded-lg"
+                >
+                  Apply
+                </button>
+              </div>
+            </div>
+          </header>
+
+          {/* ---------------- DAILY ANALYTICS (UNCHANGED) ---------------- */}
+          {loading && <p className="text-center">Loading…</p>}
+
+          {analytics && !loading && (
+            <div className="bg-[#111] text-white rounded-2xl p-8 space-y-10">
+              <h2 className="text-3xl font-bold">Per Day Analytics</h2>
+
+              <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
+                <Stat title="Total Orders" value={totalOrders} />
+                <Stat title="Total Revenue" value={formatCurrency(revenue)} />
+                <Stat title="Net Revenue" value={formatCurrency(netRevenue)} />
+                <Stat title="Total Taxes" value={formatCurrency(taxTotal)} />
+                <Stat
+                  title="Total Discounts"
+                  value={formatCurrency(discountTotal)}
+                />
+                <Stat title="Avg Order Value" value={formatCurrency(aov)} />
+                <Stat
+                  title="Revenue / Order"
+                  value={formatCurrency(revenuePerOrder)}
+                />
+                <Stat title="Items / Order" value={itemsPerOrder} />
+                <Stat
+                  title="Avg Item Selling Price"
+                  value={formatCurrency(avgItemSellingPrice)}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* ---------------- CLIENT ANALYTICS ---------------- */}
+          <section className="bg-white rounded-2xl p-8 shadow space-y-6">
+            
+
+            <div className="grid md:grid-cols-3 gap-6">
+              
               <input
-                type="text"
-                placeholder="2025-01-31"
-                value={day}
-                maxLength={10}
-                onChange={(e) =>
-                  setDay(e.target.value.replace(/[^0-9-]/g, ""))
-                }
-                className="w-full border rounded-lg px-3 py-2"
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="border rounded-lg px-3 py-2"
               />
-            </div>
-
-            <div className="flex items-end">
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="border rounded-lg px-3 py-2"
+              />
               <button
-                onClick={fetchAnalytics}
-                className="w-full bg-black text-white py-2 rounded-lg mb-2"
+                onClick={fetchClientAnalytics}
+                className="bg-black text-white rounded-lg"
               >
-                Apply
+                Fetch
               </button>
             </div>
-          </div>
-        </header>
 
-        {loading && <p className="text-center">Loading…</p>}
+            {clientLoading && (
+              <p className="text-center">Loading client analytics…</p>
+            )}
 
-        {analytics && !loading && analytics.noData && (
-          <div className="text-center bg-white p-10 rounded-2xl shadow border">
-            <h2 className="text-2xl font-bold mb-2">No data found</h2>
-            <p className="text-gray-600">Please check:</p>
-
-            <ul className="mt-3 text-gray-700">
-              <li>✔️ Correct date format YYYY-MM-DD</li>
-              <li>✔️ Correct branch selected</li>
-              <li>✔️ Sales exist on that day</li>
-            </ul>
-          </div>
-        )}
-
-        {analytics && !loading && !analytics.noData && (
-          <div className="bg-[#111] text-white rounded-2xl p-8 space-y-12">
-            <h2 className="text-3xl font-bold mb-3">Analytics</h2>
-
-            <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
-              <Stat title="Total Orders" value={totalOrders} />
-              <Stat title="Total Revenue" value={formatCurrency(revenue)} />
-              <Stat title="Net Revenue" value={formatCurrency(netRevenue)} />
-              <Stat title="Total Taxes" value={formatCurrency(taxTotal)} />
-              <Stat
-                title="Total Discounts"
-                value={formatCurrency(discountTotal)}
-              />
-              <Stat title="Avg Order Value" value={formatCurrency(aov)} />
-              <Stat
-                title="Revenue / Order"
-                value={formatCurrency(revenuePerOrder)}
-              />
-              <Stat title="Items / Order" value={itemsPerOrder} />
-              <Stat
-                title="Avg Item Selling Price"
-                value={formatCurrency(avgItemSellingPrice)}
-              />
-            </div>
-          </div>
-        )}
+            {clientAnalytics && (
+              <AnalyticsBlock data={clientAnalytics} />
+            )}
+          </section>
+        </div>
       </div>
-    </div>
     </Layout>
   );
 }
 
+/* ---------------- CLIENT ANALYTICS BLOCK ---------------- */
+function AnalyticsBlock({ data }) {
+  const format = (n) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
+
+  const totalOrders = data?.noOfSales ?? 0;
+  const revenue = data?.revenue ?? 0;
+  const netRevenue = data?.netAmount ?? 0;
+  const taxTotal = data?.taxTotal ?? 0;
+  const discountTotal = data?.discountTotal ?? 0;
+  const aov = data?.avgSaleAmount ?? 0;
+
+  const revenuePerOrder = aov;
+
+  const totalItemQty =
+    data?.items?.reduce((s, i) => s + Number(i.quantity || 0), 0) || 0;
+
+  const totalItemNet =
+    data?.items?.reduce((s, i) => s + Number(i.netAmount || 0), 0) || 0;
+
+  const itemsPerOrder =
+    totalOrders ? (totalItemQty / totalOrders).toFixed(2) : "—";
+
+  const avgItemSellingPrice =
+    totalItemQty ? (totalItemNet / totalItemQty).toFixed(2) : "—";
+
+  return (
+    <div className="bg-[#111] text-white rounded-2xl p-8">
+      <h2 className="text-3xl font-bold">Analytics (Date Range)</h2>
+      <br />
+      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
+        <Stat title="Total Orders" value={totalOrders} />
+        <Stat title="Total Revenue" value={format(revenue)} />
+        <Stat title="Net Revenue" value={format(netRevenue)} />
+        <Stat title="Total Taxes" value={format(taxTotal)} />
+        <Stat title="Total Discounts" value={format(discountTotal)} />
+        <Stat title="Avg Order Value" value={format(aov)} />
+        <Stat
+          title="Revenue / Order"
+          value={format(revenuePerOrder)}
+        />
+        <Stat title="Items / Order" value={itemsPerOrder} />
+        <Stat
+          title="Avg Item Selling Price"
+          value={format(avgItemSellingPrice)}
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- KPI TILE ---------------- */
 function Stat({ title, value }) {
   return (
     <div className="bg-[#181818] p-6 rounded-xl border border-gray-700">
       <p className="text-gray-400 text-xs uppercase mb-2">{title}</p>
-      <p className="text-3xl font-bold">{value}</p>
+      <p className="text-3xl font-bold">{value ?? "—"}</p>
     </div>
   );
 }
