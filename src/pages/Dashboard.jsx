@@ -24,12 +24,22 @@ export default function Dashboard() {
   const [clientLoading, setClientLoading] = useState(false);
 
   const [credits, setCredits] = useState(null);
+  const [showCredits, setShowCredits] = useState(false);
+  const [creditAmount, setCreditAmount] = useState("");
+
+  const [wallet, setWallet] = useState(null);
+  const [showWallet, setShowWallet] = useState(false);
+
+  const [showTransactions, setShowTransactions] = useState(false);
+  const [transactions, setTransactions] = useState([]);
+
 
   const [selectedBranches, setSelectedBranches] = useState([]);
   const [day, setDay] = useState("");
 
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [customAmount, setCustomAmount] = useState("");
 
   /* ---------------- TOKEN ---------------- */
   function getTokenSafely() {
@@ -62,6 +72,107 @@ export default function Dashboard() {
 
     fetchCredits();
   }, []);
+  /* ---------------- WALLET ---------------- */
+  useEffect(() => {
+  api.get("/api/wallet").then(res => {
+  const wallet = res.data.wallet || res.data; // supports both shapes
+  setWallet(wallet);
+  setTransactions(wallet.transactions || []);
+});
+
+}, []);
+
+  const startRecharge = async (amount) => {
+  try {
+    const { data } = await api.post("/api/wallet/create-order", { amount });
+
+    const options = {
+      key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+      amount: data.amount,
+      currency: "INR",
+      order_id: data.id,
+      name: "Skope Wallet",
+      description: "Wallet Recharge",
+      handler: async (response) => {
+        await api.post("/api/wallet/verify", {
+          ...response,
+          amount
+        });
+
+        const res = await api.get("/api/wallet");
+        setWallet(res.data);
+        alert("Wallet updated successfully");
+      }
+    };
+    const rzp = new window.Razorpay(options);
+    rzp.open();
+  } catch (err) {
+    alert("Payment failed");
+    console.error(err);
+  }
+};
+
+// Buy meeting credits using Razorpay
+const startCreditsRazorpay = async (amount) => {
+  try {
+    const { data } = await api.post("/api/credits/create-order", { amount });
+
+    const options = {
+      key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+      amount: data.amount,
+      currency: "INR",
+      order_id: data.id,
+      name: "Skope Meeting Credits",
+      description: "Buy meeting credits",
+      handler: async (response) => {
+        await api.post("/api/credits/verify", {
+          ...response,
+          amount
+        });
+
+        const c = await api.get("/api/auth/credits");
+        setCredits(c.data.credits);
+
+        alert("Meeting credits updated");
+      }
+    };
+
+    new window.Razorpay(options).open();
+  } catch (err) {
+    alert("Payment failed");
+  }
+};
+
+
+// Use wallet balance to buy meeting credits
+const addCreditsFromWallet = async (amount) => {
+  try {
+    await api.post("/api/credits/from-wallet", { amount });
+
+    const c = await api.get("/api/auth/credits");
+    setCredits(c.data.credits);
+
+    const w = await api.get("/api/wallet");
+    setWallet(w.data);
+
+    alert("Credits added from wallet");
+  } catch (err) {
+    alert(err.response?.data?.message || "Not enough wallet balance");
+  }
+};
+
+const confirmAndUseWallet = (amount) => {
+  if (!amount || amount < 10) return;
+
+  const ok = window.confirm(
+    `₹${amount} will be deducted from your wallet and added to Meeting Credits.\n\nDo you want to continue?`
+  );
+
+  if (ok) {
+    addCreditsFromWallet(amount);
+  }
+};
+
 
   /* ---------------- USER ---------------- */
   let storedUser = null;
@@ -239,9 +350,20 @@ export default function Dashboard() {
               </div>
 
               <div className="flex gap-4">
-                <div className="bg-white px-4 py-2 rounded-xl shadow">
-                  Credits: {credits ?? "—"}
+                <div
+                  onClick={() => setShowCredits(true)}
+                  className="bg-white px-4 py-2 rounded-xl shadow cursor-pointer"
+                >
+                  Meeting Credits: {credits ?? "—"}
                 </div>
+
+                <div
+                  onClick={() => setShowWallet(true)}
+                  className="bg-white px-4 py-2 rounded-xl shadow cursor-pointer"
+                >
+                  Wallet: ₹{wallet?.balance || 0}
+                </div>
+
                 <button
                   onClick={handleLogout}
                   className="bg-black text-white px-4 py-2 rounded-lg"
@@ -250,6 +372,70 @@ export default function Dashboard() {
                 </button>
               </div>
             </div>
+
+            {showCredits && (
+            <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+              <div className="bg-white p-8 rounded-xl w-96 space-y-4">
+                <h2 className="text-xl font-bold">Meeting Credits</h2>
+
+                <p className="text-lg">
+                  Current Credits: {credits ?? 0}
+                </p>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => startCreditsRazorpay(500)}
+                    className="flex-1 bg-black text-white py-2 rounded"
+                  >
+                    Buy ₹500
+                  </button>
+
+                  <button
+                    onClick={() => startCreditsRazorpay(1000)}
+                    className="flex-1 bg-black text-white py-2 rounded"
+                  >
+                    Buy ₹1000
+                  </button>
+                </div>
+
+                <input
+                  type="number"
+                  min="10"
+                  placeholder="Enter custom amount"
+                  value={creditAmount}
+                  onChange={(e) => setCreditAmount(e.target.value)}
+                  className="w-full border p-2 rounded"
+                />
+
+                <button
+                  onClick={() => startCreditsRazorpay(Number(creditAmount))}
+                  disabled={!creditAmount || Number(creditAmount) < 10}
+                  className="w-full bg-green-600 text-white py-2 rounded disabled:opacity-40"
+                >
+                  Buy ₹{creditAmount || 0}
+                </button>
+
+                <hr />
+
+                <button
+                  onClick={() => confirmAndUseWallet(Number(creditAmount))}
+                  disabled={!creditAmount || Number(creditAmount) < 10}
+                  className="w-full bg-blue-600 text-white py-2 rounded disabled:opacity-40"
+                >
+                  Use Wallet Balance
+                </button>
+
+
+                <button
+                  onClick={() => setShowCredits(false)}
+                  className="w-full border py-2 rounded"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
+
 
             <div className="mt-6 grid md:grid-cols-3 gap-6">
               <div>
@@ -275,6 +461,7 @@ export default function Dashboard() {
                   Day (YYYY-MM-DD)
                 </label>
                 <input
+                  type="date"
                   value={day}
                   onChange={(e) =>
                     setDay(e.target.value.replace(/[^0-9-]/g, ""))
@@ -360,6 +547,110 @@ export default function Dashboard() {
           </section>
         </div>
       </div>
+
+{showWallet && (
+  <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+    <div className="bg-white p-8 rounded-xl w-96 space-y-4">
+      <h2 className="text-xl font-bold">Wallet</h2>
+      <p className="text-lg">Balance: ₹{wallet?.balance || 0}</p>
+      <button
+        onClick={() => setShowTransactions(true)}
+        className="w-full border py-2 rounded"
+      >
+        View Transactions
+      </button>
+      <div className="flex gap-2">
+        <button
+          onClick={() => startRecharge(500)}
+          className="flex-1 bg-black text-white py-2 rounded"
+        >
+          ₹500
+        </button>
+        <button
+          onClick={() => startRecharge(1000)}
+          className="flex-1 bg-black text-white py-2 rounded"
+        >
+          ₹1000
+        </button>
+      </div>
+
+      <div>
+        <input
+          type="number"
+          min="10"
+          placeholder="Enter custom amount"
+          value={customAmount}
+          onChange={(e) => setCustomAmount(e.target.value)}
+          className="w-full border p-2 rounded mt-3"
+        />
+        <button
+          onClick={() => startRecharge(Number(customAmount))}
+          disabled={!customAmount || Number(customAmount) < 10}
+          className="w-full bg-green-600 text-white py-2 rounded mt-2 disabled:opacity-40"
+        >
+          Add ₹{customAmount || 0}
+        </button>
+      </div>
+
+      <button
+        onClick={() => setShowWallet(false)}
+        className="w-full border py-2 rounded"
+      >
+        Close
+      </button>
+    </div>
+  </div>
+)}
+
+{showTransactions && (
+  <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+    <div className="bg-white p-6 rounded-xl w-[500px] max-h-[80vh] overflow-y-auto">
+      <h2 className="text-xl font-bold mb-4">Wallet Transactions</h2>
+
+      {transactions.length === 0 && (
+        <p className="text-gray-500">No transactions yet</p>
+      )}
+
+      <div className="space-y-3">
+        {transactions.map((tx, i) => (
+          <div
+            key={i}
+            className="flex justify-between border p-3 rounded-lg"
+          >
+            <div>
+              <p className="font-medium">
+                {tx.type === "credit" ? "➕ Credit" : "➖ Debit"}
+              </p>
+              <p className="text-sm text-gray-500">
+                {tx.reason || tx.source}
+              </p>
+              <p className="text-xs text-gray-400">
+                {new Date(tx.date).toLocaleString()}
+              </p>
+            </div>
+
+            <div
+              className={`font-bold ${
+                tx.type === "credit" ? "text-green-600" : "text-red-600"
+              }`}
+            >
+              ₹{tx.amount}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <button
+        onClick={() => setShowTransactions(false)}
+        className="w-full mt-4 border py-2 rounded"
+      >
+        Close
+      </button>
+    </div>
+  </div>
+)}
+
+
     </Layout>
   );
 }

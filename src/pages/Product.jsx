@@ -1,17 +1,27 @@
 import React, { useEffect, useState, useMemo } from "react";
 import Layout from "../components/Layout";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { useCart } from "../context/CartContext";
 
 export default function Product() {
   const { addToCart } = useCart();
   const { itemName } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
   const API = import.meta.env.VITE_API_BASE_URL;
 
   const [offers, setOffers] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  /* 🔐 Check login */
+  const isLoggedIn = () => {
+    return (
+      sessionStorage.getItem("skope_auth_token") ||
+      localStorage.getItem("skope_auth_token")
+    );
+  };
 
   // 1️⃣ Fetch products
   useEffect(() => {
@@ -93,7 +103,26 @@ export default function Product() {
     );
   }
 
-  // 5️⃣ UI
+  // 5️⃣ Add to cart with auth check
+  const handleAddToCart = (offer) => {
+    if (!isLoggedIn()) {
+      // save current page
+      sessionStorage.setItem("redirectAfterLogin", location.pathname);
+      navigate("/login");
+      return;
+    }
+
+    addToCart({
+      id: offer.itemName + offer.supplierName,
+      name: offer.itemName,
+      price: offer.unitCost,
+      supplier: offer.supplierName,
+      unit: offer.unit,
+    });
+
+    alert("Product added to cart");
+  };
+
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 py-10">
@@ -136,17 +165,7 @@ export default function Product() {
                 </p>
 
                 <button
-                  onClick={() => {
-                    addToCart({
-                      id: offer.itemName + offer.supplierName,
-                      name: offer.itemName,
-                      price: offer.unitCost,
-                      supplier: offer.supplierName,
-                      unit: offer.unit,
-                    });
-
-                    alert("Product added to cart");
-                  }}
+                  onClick={() => handleAddToCart(offer)}
                   className="mt-3 w-full bg-black text-white py-2 rounded-full"
                 >
                   Add to cart →

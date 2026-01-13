@@ -1,53 +1,48 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
-import Layout from '../components/Layout'
-import { authUtils } from '../utils/auth'
-import api from '../utils/api';
+import { useState } from "react"
+import { Link, useNavigate } from "react-router-dom"
+import { motion, AnimatePresence } from "framer-motion"
+import Layout from "../components/Layout"
+import { authUtils } from "../utils/auth"
+import api from "../utils/api"
 
 const SignUp = () => {
   const navigate = useNavigate()
 
-  // toggle: client | vendor
-  const [mode, setMode] = useState("client")
+  // client | vendor | consumer (locked until selected)
+  const [mode, setMode] = useState("")
 
   const [formData, setFormData] = useState({
-    name: '',
-    companyName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    addressLine1: '',
-    addressLine2: '',
-    city: '',
-    state: '',
-    pincode: ''
+    name: "",
+    companyName: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    addressLine1: "",
+    addressLine2: "",
+    city: "",
+    state: "",
+    pincode: "",
+    fssai: "",
+    pan: ""
   })
 
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
-  const [status, setStatus] = useState({ type: '', message: '' })
+  const [status, setStatus] = useState({ type: "", message: "" })
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
-
-    if (errors[e.target.name]) {
-      setErrors({ ...errors, [e.target.name]: '' })
-    }
+    if (errors[e.target.name]) setErrors({ ...errors, [e.target.name]: "" })
   }
 
   const validate = () => {
     const newErrors = {}
 
-    if (!formData.name.trim()) {
-      newErrors.name =
-        mode === "client" ? "Full name is required" : "Supplier name is required"
-    }
+    if (!formData.name.trim()) newErrors.name = "Name is required"
 
-    if (!formData.companyName.trim()) {
+    if (mode !== "consumer" && !formData.companyName.trim())
       newErrors.companyName =
         mode === "client" ? "Company name is required" : "Store name is required"
-    }
 
     if (!formData.email.trim()) newErrors.email = "Email is required"
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
@@ -66,16 +61,13 @@ const SignUp = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-
-    if (!validate()) return
-
+    if (!mode || !validate()) return
     setLoading(true)
 
     try {
-      const { data } = await api.post("/api/auth/signup", {
+      const payload = {
         userType: mode,
         name: formData.name,
-        brandName: formData.companyName,
         email: formData.email,
         password: formData.password,
         address: {
@@ -83,23 +75,21 @@ const SignUp = () => {
           line2: formData.addressLine2,
           city: formData.city,
           state: formData.state,
-          pincode: formData.pincode,
-        },
-        ...(mode === "vendor" && {
-          fssai: formData.fssai,
-          pan: formData.pan
-        })
-      })
+          pincode: formData.pincode
+        }
+      }
+
+      if (mode !== "consumer") payload.brandName = formData.companyName
+      if (mode === "vendor") {
+        payload.fssai = formData.fssai
+        payload.pan = formData.pan
+      }
+
+      const { data } = await api.post("/api/auth/signup", payload)
 
       authUtils.setAuth(data.token, data.user)
-
-      setStatus({
-        type: "success",
-        message: "Account created successfully! Redirecting…"
-      })
-
+      setStatus({ type: "success", message: "Account created successfully!" })
       setTimeout(() => navigate("/login"), 600)
-
     } catch (err) {
       setStatus({
         type: "error",
@@ -112,39 +102,35 @@ const SignUp = () => {
 
   return (
     <Layout>
-      <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl ">
+      <div className="min-h-screen flex items-center justify-center py-12 px-4">
+        <div className="max-w-4xl w-full">
 
           {/* HEADING */}
           <div className="text-center mb-6">
             <h1 className="text-3xl font-bold text-gray-900 mb-1">Skope Kitchens</h1>
             <h2 className="text-xl font-semibold text-gray-800">
-              {mode === "client" ? "Create Client Account" : "Create Vendor Account"}
+              {mode === "" && "Select User Type"}
+              {mode === "client" && "Create Client Account"}
+              {mode === "vendor" && "Create Vendor Account"}
+              {mode === "consumer" && "Create Consumer Account"}
             </h2>
           </div>
 
-          {/* TOGGLE */}
-          <div className="flex justify-center bg-gray-100 rounded-full p-1 mb-6 ">
-            <button
-              onClick={() => setMode("client")}
-              className={`px-4 py-2 rounded-full text-sm font-medium ${
-                mode === "client" ? "bg-black text-white" : "text-gray-700"
-              }`}
+          {/* USER TYPE SELECT */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium mb-1">Signup As</label>
+            <select
+              value={mode}
+              onChange={(e) => setMode(e.target.value)}
+              className="w-full border rounded-lg px-3 py-2"
             >
-              Client Signup
-            </button>
-
-            <button
-              onClick={() => setMode("vendor")}
-              className={`px-4 py-2 rounded-full text-sm font-medium ${
-                mode === "vendor" ? "bg-black text-white" : "text-gray-700"
-              }`}
-            >
-              Vendor Signup
-            </button>
+              <option value="">-- Select User Type --</option>
+              <option value="client">Client</option>
+              <option value="vendor">Vendor</option>
+              <option value="consumer">Consumer</option>
+            </select>
           </div>
 
-          {/* FORM CARD WITH SLIDE ANIMATION */}
           <AnimatePresence mode="wait">
             <motion.div
               key={mode}
@@ -154,238 +140,102 @@ const SignUp = () => {
               transition={{ duration: 0.25 }}
               className="bg-cover bg-[url('/assets/Main-bg.png')] bg-center bg-no-repeat card p-6 rounded-2xl w-full shadow-lg"
             >
-
-              {/* STATUS ALERT */}
               {status.message && (
                 <div
                   className={`px-4 py-3 rounded-lg text-sm mb-4 ${
-                    status.type === 'success'
-                      ? 'bg-green-50 border border-green-200 text-green-700'
-                      : 'bg-red-50 border border-red-200 text-red-700'
+                    status.type === "success"
+                      ? "bg-green-50 border border-green-200 text-green-700"
+                      : "bg-red-50 border border-red-200 text-red-700"
                   }`}
                 >
                   {status.message}
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="space-y-5 ">
+              <form onSubmit={handleSubmit} className="relative space-y-5">
 
-  {/* TWO COLUMN GRID */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                  {/* ---------- LEFT: CLIENT / VENDOR DETAILS ---------- */}
-                  <div>
-                    <div className="text-lg font-semibold text-gray-900 mb-4">
-                      {mode === "client" ? "Client Details" : "Vendor Details"}
-                    </div>
-
-                    {/* NAME */}
-                    <div className="mb-3">
-                      <label className="block text-sm font-medium text-gray-900 mb-1">
-                        {mode === "client" ? "Full Name" : "Supplier Name"}
-                      </label>
-                      <input
-                        name="name"
-                        value={formData.name}
-                        onChange={handleChange}
-                        className="input-field"
-                        placeholder="Enter name"
-                      />
-                      {errors.name && <p className="text-red-600 text-sm">{errors.name}</p>}
-                    </div>
-
-                    {/* COMPANY / STORE */}
-                    <div className="mb-3">
-                      <label className="block text-sm font-medium text-gray-900 mb-1">
-                        {mode === "client" ? "Company Name" : "Store Name"}
-                      </label>
-                      <input
-                        name="companyName"
-                        value={formData.companyName}
-                        onChange={handleChange}
-                        className="input-field"
-                        placeholder="Enter name"
-                      />
-                      {errors.companyName && (
-                        <p className="text-red-600 text-sm">{errors.companyName}</p>
-                      )}
-                    </div>
-
-                    {/* EMAIL */}
-                    <div className="mb-3">
-                      <label className="block text-sm font-medium text-gray-900 mb-1">
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleChange}
-                        className="input-field"
-                        placeholder="Enter email"
-                      />
-                      {errors.email && <p className="text-red-600 text-sm">{errors.email}</p>}
-                    </div>
-
-                    {/* PASSWORDS */}
-                    <div className="mb-3">
-                      <label className="block text-sm font-medium text-gray-900 mb-1">
-                        Password
-                      </label>
-                      <input
-                        type="password"
-                        name="password"
-                        value={formData.password}
-                        onChange={handleChange}
-                        className="input-field"
-                        placeholder="Enter password"
-                      />
-                      {errors.password && <p className="text-red-600 text-sm">{errors.password}</p>}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-900 mb-1">
-                        Confirm Password
-                      </label>
-                      <input
-                        type="password"
-                        name="confirmPassword"
-                        value={formData.confirmPassword}
-                        onChange={handleChange}
-                        className="input-field"
-                        placeholder="Re-enter password"
-                      />
-                      {errors.confirmPassword && (
-                        <p className="text-red-600 text-sm">{errors.confirmPassword}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* ---------- RIGHT: ADDRESS SECTION ---------- */}
-                  {/* ---------- RIGHT: ADDRESS SECTION ---------- */}
-              <div>
-                <div className="text-lg font-semibold text-gray-900 mb-4">
-                  Business Address
-                </div>
-
-                {/* Address Line 1 */}
-                <div className="mb-3">
-                  <label className="block text-sm font-medium text-gray-900 mb-1">
-                    Address Line 1
-                  </label>
-                  <input
-                    name="addressLine1"
-                    placeholder="House no., street, building"
-                    className="input-field"
-                    value={formData.addressLine1}
-                    onChange={handleChange}
-                  />
-                </div>
-
-                {/* Address Line 2 */}
-                <div className="mb-3">
-                  <label className="block text-sm font-medium text-gray-900 mb-1">
-                    Address Line 2 (optional)
-                  </label>
-                  <input
-                    name="addressLine2"
-                    placeholder="Landmark / Area"
-                    className="input-field"
-                    value={formData.addressLine2}
-                    onChange={handleChange}
-                  />
-                </div>
-
-                {/* City + State */}
-                <div className="grid grid-cols-2 gap-4 mb-3">
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-900 mb-1">
-                      City
-                    </label>
-                    <input
-                      name="city"
-                      placeholder="City"
-                      className="input-field"
-                      value={formData.city}
-                      onChange={handleChange}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-900 mb-1">
-                      State
-                    </label>
-                    <input
-                      name="state"
-                      placeholder="State"
-                      className="input-field"
-                      value={formData.state}
-                      onChange={handleChange}
-                    />
-                  </div>
-
-                </div>
-
-                {/* Pincode */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-900 mb-1">
-                    Pincode
-                  </label>
-                  <input
-                    name="pincode"
-                    placeholder="Enter 6-digit pincode"
-                    className="input-field mb-3"
-                    value={formData.pincode}
-                    onChange={handleChange}
-                  />
-                </div>
-                {mode === "vendor" && (
-                  <div className="grid grid-cols-2 gap-4 mb-3">
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-900 mb-1">
-                        FSSAI Number
-                      </label>
-                      <input
-                        name="fssai"
-                        placeholder="FSSAI Number"
-                        className="input-field"
-                        value={formData.fssai}
-                        onChange={handleChange}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-900 mb-1">
-                        PAN Number
-                      </label>
-                      <input
-                        name="pan"
-                        placeholder="PAN Number"
-                        className="input-field"
-                        value={formData.pan}
-                        onChange={handleChange}
-                      />
-                    </div>
-
+                {/* LOCK OVERLAY */}
+                {!mode && (
+                  <div className="absolute inset-0 bg-white/70 backdrop-blur-sm z-10 flex items-center justify-center rounded-xl">
+                    <p className="text-lg font-semibold">
+                      Please select a user type above
+                    </p>
                   </div>
                 )}
 
-              </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                  {/* LEFT */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Name</label>
+                    <input name="name" value={formData.name} onChange={handleChange} className="input-field mb-3" />
+
+                    {mode !== "consumer" && (
+                      <>
+                        <label className="block text-sm font-medium mb-1">
+                          {mode === "client" ? "Company Name" : "Store Name"}
+                        </label>
+                        <input name="companyName" value={formData.companyName} onChange={handleChange} className="input-field mb-3" />
+                      </>
+                    )}
+
+                    <label className="block text-sm font-medium mb-1">Email</label>
+                    <input name="email" value={formData.email} onChange={handleChange} className="input-field mb-3" />
+
+                    <label className="block text-sm font-medium mb-1">Password</label>
+                    <input type="password" name="password" value={formData.password} onChange={handleChange} className="input-field mb-3" />
+
+                    <label className="block text-sm font-medium mb-1">Confirm Password</label>
+                    <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} className="input-field" />
+                  </div>
+
+                  {/* RIGHT */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Address Line 1</label>
+                    <input name="addressLine1" value={formData.addressLine1} onChange={handleChange} className="input-field mb-3" />
+
+                    <label className="block text-sm font-medium mb-1">Address Line 2</label>
+                    <input name="addressLine2" value={formData.addressLine2} onChange={handleChange} className="input-field mb-3" />
+
+                    <div className="grid grid-cols-2 gap-4 mb-3">
+                      <div>
+                        <label className="block text-sm font-medium mb-1">City</label>
+                        <input name="city" value={formData.city} onChange={handleChange} className="input-field" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">State</label>
+                        <input name="state" value={formData.state} onChange={handleChange} className="input-field" />
+                      </div>
+                    </div>
+
+                    <label className="block text-sm font-medium mb-1">Pincode</label>
+                    <input name="pincode" value={formData.pincode} onChange={handleChange} className="input-field mb-3" />
+
+                    {mode === "vendor" && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium mb-1">FSSAI</label>
+                          <input name="fssai" value={formData.fssai} onChange={handleChange} className="input-field" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-1">PAN</label>
+                          <input name="pan" value={formData.pan} onChange={handleChange} className="input-field" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                 </div>
 
-                {/* ---------- SUBMIT BUTTON ---------- */}
                 <button
                   type="submit"
-                  disabled={loading}
-                  className="relative w-full inline-flex items-center justify-center btn-primary text-white bg-black hover:bg-black disabled:opacity-50 rounded-lg py-3"
+                  disabled={loading || !mode}
+                  className="w-full bg-black text-white py-3 rounded-lg disabled:opacity-40"
                 >
                   {loading ? "Creating Account..." : "Create Account"}
                 </button>
-              </form>
 
+              </form>
 
               <div className="mt-4 text-center text-sm">
                 Already have an account?{" "}
@@ -395,6 +245,7 @@ const SignUp = () => {
               </div>
             </motion.div>
           </AnimatePresence>
+
         </div>
       </div>
     </Layout>

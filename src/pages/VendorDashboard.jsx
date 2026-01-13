@@ -112,17 +112,14 @@ export default function VendorDashboard() {
                     {p.itemName || "Unnamed Product"}
                     </div>
 
-                    <div className="text-sm text-slate-600 flex gap-6">
-
-                    <span>
-                        Qty: {p.totalQty} {p.unit}
-                    </span>
-
-                    <span>
-                        Unit Cost: ₹{p.unitCost}
-                    </span>
-
+                  <div className="text-sm text-slate-600 flex w-4/12">
+                    <div className="w-6/12 flex justify-start">
+                      Qty: {p.totalQty} {p.unit}
                     </div>
+                    <div className="w-6/12 flex justify-start">
+                      Unit Cost: ₹{p.unitCost}
+                    </div>
+                  </div>
 
                 </div>
                 ))}
