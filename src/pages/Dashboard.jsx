@@ -23,9 +23,6 @@ export default function Dashboard() {
   const [clientAnalytics, setClientAnalytics] = useState(null);
   const [clientLoading, setClientLoading] = useState(false);
 
-  const [credits, setCredits] = useState(null);
-  const [showCredits, setShowCredits] = useState(false);
-  const [creditAmount, setCreditAmount] = useState("");
 
   const [wallet, setWallet] = useState(null);
   const [showWallet, setShowWallet] = useState(false);
@@ -54,24 +51,7 @@ export default function Dashboard() {
     }
   }
 
-  /* ---------------- CREDITS ---------------- */
-  useEffect(() => {
-    const fetchCredits = async () => {
-      const token = getTokenSafely();
-      if (!token) return;
 
-      try {
-        const res = await api.get("/api/auth/credits", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setCredits(res.data?.credits ?? 0);
-      } catch {
-        setCredits(null);
-      }
-    };
-
-    fetchCredits();
-  }, []);
   /* ---------------- WALLET ---------------- */
   useEffect(() => {
   api.get("/api/wallet").then(res => {
@@ -112,66 +92,8 @@ export default function Dashboard() {
   }
 };
 
-// Buy meeting credits using Razorpay
-const startCreditsRazorpay = async (amount) => {
-  try {
-    const { data } = await api.post("/api/credits/create-order", { amount });
-
-    const options = {
-      key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-      amount: data.amount,
-      currency: "INR",
-      order_id: data.id,
-      name: "Skope Meeting Credits",
-      description: "Buy meeting credits",
-      handler: async (response) => {
-        await api.post("/api/credits/verify", {
-          ...response,
-          amount
-        });
-
-        const c = await api.get("/api/auth/credits");
-        setCredits(c.data.credits);
-
-        alert("Meeting credits updated");
-      }
-    };
-
-    new window.Razorpay(options).open();
-  } catch (err) {
-    alert("Payment failed");
-  }
-};
 
 
-// Use wallet balance to buy meeting credits
-const addCreditsFromWallet = async (amount) => {
-  try {
-    await api.post("/api/credits/from-wallet", { amount });
-
-    const c = await api.get("/api/auth/credits");
-    setCredits(c.data.credits);
-
-    const w = await api.get("/api/wallet");
-    setWallet(w.data);
-
-    alert("Credits added from wallet");
-  } catch (err) {
-    alert(err.response?.data?.message || "Not enough wallet balance");
-  }
-};
-
-const confirmAndUseWallet = (amount) => {
-  if (!amount || amount < 10) return;
-
-  const ok = window.confirm(
-    `₹${amount} will be deducted from your wallet and added to Meeting Credits.\n\nDo you want to continue?`
-  );
-
-  if (ok) {
-    addCreditsFromWallet(amount);
-  }
-};
 
 
   /* ---------------- USER ---------------- */
@@ -350,16 +272,19 @@ const confirmAndUseWallet = (amount) => {
               </div>
 
               <div className="flex gap-4">
-                <div
-                  onClick={() => setShowCredits(true)}
-                  className="bg-white px-4 py-2 rounded-xl shadow cursor-pointer"
-                >
-                  Meeting Credits: {credits ?? "—"}
+                <div className="bg-white px-4 py-2 rounded-xl shadow cursor-pointer">
+                  <button
+                    onClick={() => navigate("/order")}
+                    className="bg-green-600 text-white px-4 py-2 rounded-lg"
+                  >
+                    Order Dish
+                  </button>
                 </div>
+                
 
                 <div
                   onClick={() => setShowWallet(true)}
-                  className="bg-white px-4 py-2 rounded-xl shadow cursor-pointer"
+                  className="bg-white px-4 py-2 rounded-xl flex items-center shadow cursor-pointer"
                 >
                   Wallet: ₹{wallet?.balance || 0}
                 </div>
@@ -372,70 +297,6 @@ const confirmAndUseWallet = (amount) => {
                 </button>
               </div>
             </div>
-
-            {showCredits && (
-            <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-              <div className="bg-white p-8 rounded-xl w-96 space-y-4">
-                <h2 className="text-xl font-bold">Meeting Credits</h2>
-
-                <p className="text-lg">
-                  Current Credits: {credits ?? 0}
-                </p>
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => startCreditsRazorpay(500)}
-                    className="flex-1 bg-black text-white py-2 rounded"
-                  >
-                    Buy ₹500
-                  </button>
-
-                  <button
-                    onClick={() => startCreditsRazorpay(1000)}
-                    className="flex-1 bg-black text-white py-2 rounded"
-                  >
-                    Buy ₹1000
-                  </button>
-                </div>
-
-                <input
-                  type="number"
-                  min="10"
-                  placeholder="Enter custom amount"
-                  value={creditAmount}
-                  onChange={(e) => setCreditAmount(e.target.value)}
-                  className="w-full border p-2 rounded"
-                />
-
-                <button
-                  onClick={() => startCreditsRazorpay(Number(creditAmount))}
-                  disabled={!creditAmount || Number(creditAmount) < 10}
-                  className="w-full bg-green-600 text-white py-2 rounded disabled:opacity-40"
-                >
-                  Buy ₹{creditAmount || 0}
-                </button>
-
-                <hr />
-
-                <button
-                  onClick={() => confirmAndUseWallet(Number(creditAmount))}
-                  disabled={!creditAmount || Number(creditAmount) < 10}
-                  className="w-full bg-blue-600 text-white py-2 rounded disabled:opacity-40"
-                >
-                  Use Wallet Balance
-                </button>
-
-
-                <button
-                  onClick={() => setShowCredits(false)}
-                  className="w-full border py-2 rounded"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          )}
-
 
             <div className="mt-6 grid md:grid-cols-3 gap-6">
               <div>

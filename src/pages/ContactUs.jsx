@@ -3,7 +3,7 @@ import Layout from "../components/Layout";
 import api from "../utils/api";
 
 /* ---------------- SAFE STORAGE HELPERS ---------------- */
-
+const MEETING_COST = 30;
 function storageAvailable() {
   try {
     const testKey = "__test__";
@@ -42,62 +42,73 @@ const ContactUs = () => {
 
   /* ---------- LOAD CHEF NAME ---------- */
   useEffect(() => {
-    const fetchChef = async () => {
-      try {
-        const token = safeGet("skope_auth_token");
-        if (!token) return;
+  const fetchChef = async () => {
+    try {
+      const res = await api.get("/api/brand/profile");
+      setChefName(res.data?.chefName || "");
 
-        const res = await api.get("/api/brand/profile", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
 
-        setChefName(res.data?.chefName || "");
-      } catch (err) {
-        console.error("[ContactUs] Failed to load chefName", err);
-        setChefName("");
-      }
-    };
+    } catch (err) {
+      console.error("[ContactUs] Failed to load profile", err);
+      setChefName("");
+    }
+  };
 
-    fetchChef();
-  }, []);
+  fetchChef();
+}, []);
 
   const displayChefName = chefName || "Chef";
 
   /* ---------- SCHEDULE MEETING ---------- */
 
 const handleSchedule = async (team) => {
-  const token = safeGet("skope_auth_token");
   const user = safeGetJSON("skope_user");
 
-  if (!token || !user) {
+  if (!user) {
     alert("Please login first to schedule a meeting.");
     return;
   }
 
-  const ok = window.confirm(
-    "Do you really want to schedule this meeting?\n30 credits will be deducted."
-  );
-
-  if (!ok) return;
-
   try {
     setLoading(true);
 
-    await api.post("/api/meeting/schedule", {
+    // 1️⃣ Fetch current wallet balance
+    const walletRes = await api.get("/api/wallet");
+    const balance =
+      walletRes.data?.wallet?.balance ??
+      walletRes.data?.balance ??
+      0;
+
+    // 2️⃣ Confirm with balance shown
+    const ok = window.confirm(
+      `Confirm Meeting Schedule\n\n` +
+      `Current wallet balance: ₹${balance}\n` +
+      `Amount to be deducted: ₹30\n\n` +
+      `Do you want to continue?`
+    );
+
+    if (!ok) return;
+
+    // 3️⃣ Schedule meeting
+    const res = await api.post("/api/meeting/schedule", {
       name: user?.name || "User",
       email: user?.email || "",
       date: new Date().toISOString(),
       notes: `Meeting with ${team.team}`,
     });
 
-    // redirect after success
+    const remainingBalance = res.data?.remainingBalance;
+
+    alert(
+      `Schedule meet on next page ✅\n\n` +
+      `₹30 has been deducted from your wallet.\n` +
+      `Current wallet balance: ₹${remainingBalance}`
+    );
+
     window.location.href = team.link;
-
   } catch (err) {
-    console.error("Schedule error:", err);
-
     if (err?.response?.status === 400) {
-      alert(err.response.data.message || "Insufficient credits.");
+      alert(err.response.data.message || "Insufficient wallet balance.");
       return;
     }
 
@@ -111,8 +122,6 @@ const handleSchedule = async (team) => {
     setLoading(false);
   }
 };
-
-
 
   /* ---------- APPOINTMENT CARDS ---------- */
 

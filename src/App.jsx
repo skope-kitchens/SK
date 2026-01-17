@@ -16,7 +16,7 @@ import Category from './pages/Category'
 import ScrollToTop from './components/ScrollToTop'
 import ProductUpload from './pages/ProductUpload'
 import VendorDashboard from './pages/VendorDashboard'
-
+import OrderDish from './pages/OrderDish'
 
 function App() {
   return (
@@ -45,6 +45,7 @@ function App() {
         <Route path="/cart" element={<Cart />} />
         <Route path="/category/:categoryName" element={<Category />}/>
         <Route path="/product-upload" element={<ProductUpload />}/>
+        <Route path="/order" element={<OrderDish />}/>
       </Routes>
     </Router>
   )
