@@ -7,16 +7,26 @@ const Home = () => {
   const navigate = useNavigate()
 
   const handleBecomePartner = (e) => {
-    e.preventDefault()
-    // Check if user is logged in
-    if (authUtils.isAuthenticated()) {
-      // If logged in, go to eligibility form
-      navigate('/eligibility-form')
-    } else {
-      // If not logged in, go to login page
-      navigate('/login')
-    }
+  e.preventDefault()
+
+  if (!authUtils.isAuthenticated()) {
+    navigate('/login')
+    return
   }
+
+  const user = authUtils.getUser()
+
+  // vendor detection
+  const isVendor = !!user?.supplierName || !!user?.storeName
+
+  if (isVendor) {
+    navigate('/vendor-eligibility')
+  } else {
+    navigate('/eligibility-form')
+  }
+}
+
+
 
   return (
     <Layout>

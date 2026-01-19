@@ -17,6 +17,7 @@ import ScrollToTop from './components/ScrollToTop'
 import ProductUpload from './pages/ProductUpload'
 import VendorDashboard from './pages/VendorDashboard'
 import OrderDish from './pages/OrderDish'
+import VendorEligibility from './pages/VendorEligibility'
 
 function App() {
   return (
@@ -46,6 +47,7 @@ function App() {
         <Route path="/category/:categoryName" element={<Category />}/>
         <Route path="/product-upload" element={<ProductUpload />}/>
         <Route path="/order" element={<OrderDish />}/>
+        <Route path="/vendor-eligibility" element={<VendorEligibility />}/>
       </Routes>
     </Router>
   )
