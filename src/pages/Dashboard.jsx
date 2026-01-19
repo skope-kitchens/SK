@@ -38,6 +38,10 @@ export default function Dashboard() {
   const [toDate, setToDate] = useState("");
   const [customAmount, setCustomAmount] = useState("");
 
+  const [services, setServices] = useState([]);
+  const [servicesLoading, setServicesLoading] = useState(false);
+
+
   /* ---------------- TOKEN ---------------- */
   function getTokenSafely() {
     try {
@@ -113,7 +117,22 @@ export default function Dashboard() {
   }
 };
 
+  /*----------------Services-----------------*/
+    useEffect(() => {
+      const fetchServices = async () => {
+        try {
+          setServicesLoading(true);
+          const res = await api.get("/api/services/client");
+          setServices(res.data.services || []);
+        } catch (err) {
+          console.error("Failed to load services", err);
+        } finally {
+          setServicesLoading(false);
+        }
+      };
 
+      fetchServices();
+    }, []);
 
 
 
@@ -319,6 +338,56 @@ export default function Dashboard() {
               </div>
             </div>
 
+
+            {/* ---------------- SERVICE CHECKLIST ---------------- */}
+            <section className="bg-white mt-10 rounded-2xl p-8 shadow space-y-6">
+              <h2 className="text-2xl font-semibold">
+                Service Onboarding Status
+              </h2>
+
+              {servicesLoading && (
+                <p className="text-gray-500">Loading services…</p>
+              )}
+
+              {!servicesLoading && services.length === 0 && (
+                <p className="text-gray-500">
+                  No services assigned yet.
+                </p>
+              )}
+
+              <div className="space-y-3">
+                {services.map((service, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between border rounded-lg p-4"
+                  >
+                    <div>
+                      <p className="font-medium">{service.name}</p>
+
+                      {service.completed && service.completedAt && (
+                        <p className="text-xs text-gray-500">
+                          Completed on{" "}
+                          {new Date(service.completedAt).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        service.completed
+                          ? "bg-green-100 text-green-700"
+                          : "bg-yellow-100 text-yellow-700"
+                      }`}
+                    >
+                      {service.completed ? "Completed" : "Pending"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+
+
             <div className="mt-6 grid md:grid-cols-3 gap-6">
               <div>
                 <label className="block text-sm font-medium mb-2">
@@ -497,7 +566,7 @@ export default function Dashboard() {
           )}
 
           {/* ---------------- CLIENT ANALYTICS ---------------- */}
-          <section className="bg-white rounded-2xl p-8 shadow space-y-6">
+          <section className="bg-[url('./assets/Main-bg.png')] bg-cover bg-center bg-no-repeat rounded-2xl p-8 shadow space-y-6">
             
 
             <div className="grid md:grid-cols-3 gap-6">

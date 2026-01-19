@@ -18,6 +18,7 @@ import ProductUpload from './pages/ProductUpload'
 import VendorDashboard from './pages/VendorDashboard'
 import OrderDish from './pages/OrderDish'
 import VendorEligibility from './pages/VendorEligibility'
+import AdminDashboard from './pages/AdminDashboard'
 
 function App() {
   return (
@@ -48,6 +49,7 @@ function App() {
         <Route path="/product-upload" element={<ProductUpload />}/>
         <Route path="/order" element={<OrderDish />}/>
         <Route path="/vendor-eligibility" element={<VendorEligibility />}/>
+        <Route path="/admin-dashboard" element={<AdminDashboard />}/>
       </Routes>
     </Router>
   )

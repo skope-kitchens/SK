@@ -36,16 +36,20 @@ const Login = () => {
       })
 
       // save token + profile
-      authUtils.setAuth(data.token, data.user || data.vendor)
+     // 🔐 SAVE TOKEN ALWAYS
+      authUtils.setAuth(data.token);
 
-      // SAVE ROLE RETURNED FROM BACKEND
-      localStorage.setItem("userType", data.userType)
+      // 🔑 SAVE USER TYPE (client / vendor / admin)
+      localStorage.setItem("userType", data.userType);
 
-      // SAVE USER/VENDOR DETAILS
-      localStorage.setItem(
-        "skope_user",
-        JSON.stringify(data.user || data.vendor)
-      )
+      // ✅ ONLY save user object if it exists (NOT for admin)
+      if (data.user || data.vendor) {
+        sessionStorage.setItem(
+          "skope_user",
+          JSON.stringify(data.user || data.vendor)
+        );
+      }
+
 
       setStatus({
         type: 'success',

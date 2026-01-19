@@ -7,30 +7,40 @@ const Navigation = () => {
   const [userInitials, setUserInitials] = useState('')
   const [isAuthed, setIsAuthed] = useState(false)
 
-  useEffect(() => {
-    const authed = authUtils.isAuthenticated()
-    setIsAuthed(authed)
+useEffect(() => {
+  const authed = authUtils.isAuthenticated();
+  setIsAuthed(authed);
 
-    if (!authed) {
-      setUserInitials('')
-      return
-    }
+  if (!authed) {
+    setUserInitials("");
+    return;
+  }
 
-    const user = authUtils.getUser()
-    if (!user) return
+  const storedType = localStorage.getItem("userType");
 
-    const nameSource = user.name || user.companyName || user.email || ''
-    const parts = nameSource.trim().split(/\s+/)
-    let initials = ''
-    if (parts.length === 1) {
-      initials = parts[0].charAt(0)
-    } else {
-      initials = `${parts[0].charAt(0)}${parts[1].charAt(0)}`
-    }
-    setUserInitials(initials.toUpperCase())
-  }, [])
+  if (storedType === "admin") {
+    setUserInitials("AD");
+    return;
+  }
 
-  const handleAvatarClick = () => {
+  const user = authUtils.getUser();
+  if (!user) return;
+
+  const nameSource =
+    user.name || user.companyName || user.email || "";
+
+  const parts = nameSource.trim().split(/\s+/);
+  const initials =
+    parts.length === 1
+      ? parts[0].charAt(0)
+      : `${parts[0].charAt(0)}${parts[1].charAt(0)}`;
+
+  setUserInitials(initials.toUpperCase());
+}, []);
+
+
+
+const handleAvatarClick = () => {
   const user = authUtils.getUser();
   const storedType =
     localStorage.getItem("userType") ||
@@ -40,10 +50,13 @@ const Navigation = () => {
 
   if (storedType === "vendor") {
     navigate("/vendor-dashboard");
-  } else {
+  } else if (storedType === "client") {
     navigate("/dashboard");
+  } else {
+    navigate("/admin-dashboard");
   }
 };
+
 
 
   return (
@@ -93,27 +106,31 @@ const Navigation = () => {
               </>
             )}
 
-            {isAuthed && userInitials && (
-              <div className=" flex">
-                <Link 
-              to="/cart" 
-              className="px-4 py-2 mr-10 text-sm font-medium text-gray-900 bg-white flex justify-center items-center rounded-lg hover:bg-gray-50 transition-colors "
-            >
-              Cart
-            </Link>
-                <button
+            {isAuthed && (
+            <div className="flex">
+              {/* Hide cart for admin */}
+              {localStorage.getItem("userType") !== "admin" && (
+                <Link
+                  to="/cart"
+                  className="px-4 py-2 mr-10 text-sm font-medium text-gray-900 bg-white flex justify-center items-center rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cart
+                </Link>
+              )}
+
+              <button
                 type="button"
                 onClick={handleAvatarClick}
                 className="flex items-center gap-2 rounded-full bg-gray-900 text-white px-3 py-1.5 text-xs font-medium shadow-sm hover:bg-gray-800 transition-colors"
               >
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-800 text-sm font-semibold">
-                  {userInitials}
+                  {userInitials || "AD"}
                 </span>
                 <span className="hidden sm:inline">Dashboard</span>
               </button>
-              
-              </div>
-            )}
+            </div>
+          )}
+
           </div>
         </div>
       </div>
