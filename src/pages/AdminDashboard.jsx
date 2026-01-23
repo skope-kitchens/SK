@@ -1,18 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import BrandList from "./BrandList";
 import BrandDrawer from "./BrandDrawer";
+import api from "../utils/api";
+
 
 const AdminDashboard = () => {
   const [selectedBrand, setSelectedBrand] = useState(null);
   const navigate = useNavigate();
+
+
 
   const handleLogout = () => {
     sessionStorage.clear();
     localStorage.clear();
     navigate("/");
   };
+
+  
 
   return (
     <Layout>
@@ -37,6 +43,8 @@ const AdminDashboard = () => {
           />
         )}
       </div>
+
+      
     </Layout>
   );
 };

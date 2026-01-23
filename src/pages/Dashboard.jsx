@@ -12,6 +12,11 @@ const BRANCH_LABELS = {
   KOR: "Koramangala",
   HO: "Head Office",
 };
+const formatMoney = (value) =>
+  Number(value || 0).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -326,7 +331,7 @@ export default function Dashboard() {
                   onClick={() => setShowWallet(true)}
                   className="bg-white px-4 py-2 rounded-xl flex items-center shadow cursor-pointer"
                 >
-                  Wallet: ₹{wallet?.balance || 0}
+                  Wallet: ₹{formatMoney(wallet?.balance)}
                 </div>
 
                 <button
@@ -436,7 +441,7 @@ export default function Dashboard() {
           <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
             <div className="bg-white p-8 rounded-xl w-96 space-y-4">
               <h2 className="text-xl font-bold">Wallet</h2>
-              <p className="text-lg">Balance: ₹{wallet?.balance || 0}</p>
+              <p className="text-lg">Balance: ₹{formatMoney(wallet?.balance)}</p>
               <button
                 onClick={() => setShowTransactions(true)}
                 className="w-full border py-2 rounded"
