@@ -1,24 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import BrandList from "./BrandList";
 import BrandDrawer from "./BrandDrawer";
-import api from "../utils/api";
-
 
 const AdminDashboard = () => {
   const [selectedBrand, setSelectedBrand] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0); // 👈 IMPORTANT
   const navigate = useNavigate();
-
-
 
   const handleLogout = () => {
     sessionStorage.clear();
     localStorage.clear();
     navigate("/");
   };
-
-  
 
   return (
     <Layout>
@@ -34,17 +29,22 @@ const AdminDashboard = () => {
           </button>
         </div>
 
-        <BrandList onSelectBrand={setSelectedBrand} />
+        {/* 👇 key forces BrandList to refetch */}
+        <BrandList
+          key={refreshKey}
+          onSelectBrand={setSelectedBrand}
+        />
 
         {selectedBrand && (
           <BrandDrawer
             brand={selectedBrand}
-            onClose={() => setSelectedBrand(null)}
+            onClose={() => {
+              setSelectedBrand(null);
+              setRefreshKey((k) => k + 1); // 🔁 REFRESH BRANDS
+            }}
           />
         )}
       </div>
-
-      
     </Layout>
   );
 };
