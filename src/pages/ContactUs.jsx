@@ -37,27 +37,8 @@ function safeGetJSON(key) {
 /* ------------------------------------------------------ */
 
 const ContactUs = () => {
-  const [chefName, setChefName] = useState("");
   const [loading, setLoading] = useState(false);
 
-  /* ---------- LOAD CHEF NAME ---------- */
-  useEffect(() => {
-  const fetchChef = async () => {
-    try {
-      const res = await api.get("/api/brand/profile");
-      setChefName(res.data?.chefName || "");
-
-
-    } catch (err) {
-      console.error("[ContactUs] Failed to load profile", err);
-      setChefName("");
-    }
-  };
-
-  fetchChef();
-}, []);
-
-  const displayChefName = chefName || "Chef";
 
   /* ---------- SCHEDULE MEETING ---------- */
 
@@ -127,7 +108,7 @@ const handleSchedule = async (team) => {
 
   const connectTeams = [
     {
-      name: displayChefName,
+      name: "Culinary Team",
       role: "Executive Chef",
       team: "Culinary Team",
       image: "/assets/chef.jpg",
@@ -156,7 +137,7 @@ const handleSchedule = async (team) => {
 
   const teamMembers = [
     {
-      name: displayChefName,
+      name: "Culinary Team",
       role: "Executive Chef",
       team: "Culinary Team",
       image: "/assets/chef.jpg",

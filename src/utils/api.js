@@ -29,6 +29,25 @@ api.interceptors.request.use((config) => {
   }
   return config
 })
+/* ---------- INVENTORY (Ingredients source) ---------- */
+export const fetchInventoryItems = (branchCode) =>
+  api.get("/inventory/items", {
+    params: { branchCode },
+  });
 
+/* ---------- INGREDIENTS (optional if stored separately) ---------- */
+export const fetchIngredients = () =>
+  api.get("/inventory/items");
+
+/* ---------- SUB RECIPES ---------- */
+export const fetchSubRecipes = () =>
+  api.get("/subrecipes");
+
+export const createSubRecipe = (payload) =>
+  api.post("/subrecipes", payload);
+
+/* ---------- MAIN RECIPE ---------- */
+export const createMainRecipe = (payload) =>
+  api.post("/mainrecipes", payload);
 
 export default api;

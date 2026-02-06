@@ -19,6 +19,7 @@ import VendorDashboard from './pages/VendorDashboard'
 import OrderDish from './pages/OrderDish'
 import VendorEligibility from './pages/VendorEligibility'
 import AdminDashboard from './pages/AdminDashboard'
+import AddRecipe from './pages/AddRecipe'
 
 function App() {
   return (
@@ -50,6 +51,7 @@ function App() {
         <Route path="/order" element={<OrderDish />}/>
         <Route path="/vendor-eligibility" element={<VendorEligibility />}/>
         <Route path="/admin-dashboard" element={<AdminDashboard />}/>
+        <Route path="/add-recipe" element={<AddRecipe />}/>
       </Routes>
     </Router>
   )

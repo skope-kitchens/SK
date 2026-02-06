@@ -21,12 +21,20 @@ const AdminDashboard = () => {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>
 
+          <div className=" flex gap-4">
+            <button
+            onClick={() => navigate("/add-recipe")}
+            className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition"
+          >
+            Add Recipe
+          </button>
           <button
             onClick={handleLogout}
             className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition"
           >
             Logout
           </button>
+          </div>
         </div>
 
         {/* 👇 key forces BrandList to refetch */}

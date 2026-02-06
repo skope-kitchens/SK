@@ -1,11 +1,9 @@
-import axios from "axios";
+import api from "./api";
 
-export const fetchFoodCost = async (dishName,wastagePercent = 5) => {
-  const res = await axios.get(
-    `http://localhost:5002/api/food-cost/${encodeURIComponent(dishName)}`,
-    {
-      params: { wastagePercent }
-    }
-  );
+export const fetchFoodCost = async (recipeName, wastagePercent) => {
+  const res = await api.post("/api/costing/calculate", {
+    recipeName,
+    wastagePercent,
+  });
   return res.data;
 };

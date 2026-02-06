@@ -13,28 +13,31 @@ export default function OrderDish() {
   const [showSummary, setShowSummary] = useState(false);
   const [summaryRows, setSummaryRows] = useState([]);
   const [summaryLoading, setSummaryLoading] = useState(false);
-
+  const [expanded, setExpanded] = useState({});
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [orderItems, setOrderItems] = useState([
     { dish: "", qty: 1, price: 0, total: 0 }
   ]);
 
   useEffect(() => {
-    const fetchDishes = async () => {
-      try {
-        const res = await api.get("/api/food-cost/dishList");
-        setDishes(res.data.dishes || []);
-      } catch (err) {
-        console.error("Failed to load dishes", err);
-      }
-    };
-    fetchDishes();
-  }, []);
+  const fetchDishes = async () => {
+    try {
+      const res = await api.get("/api/mainrecipes/dish-list");
+      setDishes(res.data.dishes || []);
+    } catch (err) {
+      console.error("Failed to load dishes", err);
+    }
+  };
+
+  fetchDishes();
+}, []);
+
+
 
   const calculate = async () => {
     try {
       setLoading(true);
-      const result = await fetchFoodCost(dish, wastagePercent);
+      const result = await fetchFoodCost(dish);
       setData(result);
     } catch (err) {
       alert(err.response?.data?.error || err.message);
@@ -42,6 +45,13 @@ export default function OrderDish() {
       setLoading(false);
     }
   };
+  const toggleExpand = (index) => {
+  setExpanded(prev => ({
+    ...prev,
+    [index]: !prev[index],
+  }));
+};
+
 
   return (
     <Layout>
@@ -68,18 +78,6 @@ export default function OrderDish() {
                   </select>
                 </div>
 
-                <div>
-                  <label className="text-sm text-gray-500">Wastage (%)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={wastagePercent}
-                    onChange={(e) => setWastagePercent(Number(e.target.value))}
-                    className="border rounded-lg px-4 py-2 w-32"
-                  />
-                </div>
-
                 <button
                   onClick={calculate}
                   disabled={!dish || loading}
@@ -94,8 +92,9 @@ export default function OrderDish() {
                   setShowSummary(true);
                   setSummaryLoading(true);
                   const res = await api.get(
-                    `/api/food-cost/summary?wastagePercent=${wastagePercent}`
+                    `/api/costing/summary`
                   );
+
                   setSummaryRows(res.data.summary || []);
                   setSummaryLoading(false);
                 }}
@@ -128,25 +127,66 @@ export default function OrderDish() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.breakdown.map((r, i) => (
-                      <tr key={i} className="border-t">
-                        <td className="p-2">{r.item}</td>
-                        <td className="p-2 text-center">{r.type}</td>
-                        <td className="p-2 text-center">{r.quantity}</td>
-                        <td className="p-2 text-right">₹{r.cost}</td>
-                      </tr>
-                    ))}
+                    {data.breakdown.map((row, index) => {
+                      const isSub = row.type === "SUBRECIPE";
+
+                      // find nearest parent subrecipe above this row
+                      let parentIndex = null;
+                      if (row.level > 0) {
+                        for (let j = index - 1; j >= 0; j--) {
+                          if (data.breakdown[j].type === "SUBRECIPE") {
+                            parentIndex = j;
+                            break;
+                          }
+                        }
+                        // hide child if parent is collapsed
+                        if (parentIndex !== null && !expanded[parentIndex]) {
+                          return null;
+                        }
+                      }
+
+                      return (
+                        <tr key={index} className="border-t">
+                          {/* ITEM */}
+                          <td className="p-2">
+                            <div
+                              className={`flex items-center gap-2 ${
+                                row.level > 0 ? "pl-6 text-gray-600" : ""
+                              }`}
+                            >
+                              {isSub && (
+                                <button
+                                  onClick={() => toggleExpand(index)}
+                                  className="text-xs font-bold w-4"
+                                >
+                                  {expanded[index] ? "▼" : "▶"}
+                                </button>
+                              )}
+                              {row.item}
+                            </div>
+                          </td>
+
+                          <td className="p-2 text-center">{row.type}</td>
+                          <td className="p-2 text-center">
+                            {row.qty} {row.uom}
+                          </td>
+                          <td className="p-2 text-right">₹{row.cost}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
+
+
                 </table>
               </div>
 
               <div className="bg-[#111] text-white p-6 rounded-2xl">
-                <CostRow label="Food Cost" value={data.totalFoodCost} />
-                <CostRow label="Packaging Cost" value={data.totalPackagingCost} />
-                <CostRow label={`Wastage (${data.wastagePercent}%)`} value={data.wastageCost} />
+                <CostRow label="Food Cost" value={data.foodCost} />
+                <CostRow label="Packaging Cost" value={data.packagingCost} />
+                <CostRow label="Production Variance (5%)" value={data.productionVariance} />
                 <div className="border-t mt-4 pt-4 flex justify-between font-bold">
                   <span>Total</span>
-                  <span>₹{data.totalCost}</span>
+                  <span>₹{data.total}</span>
                 </div>
               </div>
             </div>
@@ -163,7 +203,7 @@ export default function OrderDish() {
                       <th className="p-2 text-left">Dish</th>
                       <th className="p-2 text-right">Food</th>
                       <th className="p-2 text-right">Packaging</th>
-                      <th className="p-2 text-right">Wastage</th>
+                      <th className="p-2 text-right">Production Variance</th>
                       <th className="p-2 text-right">Total</th>
                     </tr>
                   </thead>
@@ -173,7 +213,7 @@ export default function OrderDish() {
                         <td className="p-2">{r.dishName}</td>
                         <td className="p-2 text-right">₹{r.foodCost}</td>
                         <td className="p-2 text-right">₹{r.packagingCost}</td>
-                        <td className="p-2 text-right">₹{r.wastageCost}</td>
+                        <td className="p-2 text-right">₹{r.productionVariance}</td>
                         <td className="p-2 text-right font-semibold">₹{r.totalCost}</td>
                       </tr>
                     ))}
@@ -218,8 +258,8 @@ function OrderModal({ dishes, orderItems, setOrderItems, onClose }) {
 
     if (field === "dish") {
       const res = await fetchFoodCost(value, 5);
-      updated[index].price = res.totalCost;
-      updated[index].total = res.totalCost * updated[index].qty;
+      updated[index].price = res.total;
+      updated[index].total = res.total * updated[index].qty;
     }
 
     if (field === "qty") {
