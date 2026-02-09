@@ -7,24 +7,31 @@ import ServiceChecklist from "./ServiceChecklist";
 const BrandDrawer = ({ brand, onClose }) => {
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
+  const [dueAmount, setDueAmount] = useState("");
+  const [dueReason, setDueReason] = useState("");
+
 
   /* ================= FETCH ORDERS ================= */
   useEffect(() => {
     if (!brand?._id) return;
 
-    setLoadingOrders(true);
-
-    api
-      .get(`/api/admin/orders/${brand._id}`)
-      .then((res) => {
+    const fetchOrders = async () => {
+      setLoadingOrders(true);
+      try {
+        const res = await api.get(`/api/admin/orders/${brand._id}`);
         setOrders(res.data || []);
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error("Failed to fetch orders", err);
-      })
-      .finally(() => {
+      } finally {
         setLoadingOrders(false);
-      });
+      }
+    };
+
+    fetchOrders();
+    
+    // Refresh orders every 5 seconds to get updates
+    const interval = setInterval(fetchOrders, 5000);
+    return () => clearInterval(interval);
   }, [brand]);
 
   /* ================= UPDATE ORDER STATUS ================= */
@@ -72,6 +79,43 @@ const BrandDrawer = ({ brand, onClose }) => {
           balance={brand.wallet?.balance ?? 0}
         />
 
+        <div className="mt-4 border rounded-lg p-4">
+  <h4 className="font-semibold mb-2">Add Due Amount</h4>
+
+  <input
+    type="number"
+    placeholder="Amount"
+    className="w-full border rounded px-3 py-2 mb-2"
+    value={dueAmount}
+    onChange={(e) => setDueAmount(e.target.value)}
+  />
+
+  <input
+    type="text"
+    placeholder="Reason (optional)"
+    className="w-full border rounded px-3 py-2 mb-2"
+    value={dueReason}
+    onChange={(e) => setDueReason(e.target.value)}
+  />
+
+  <button
+    onClick={async () => {
+      await api.post("/api/wallet/admin/wallet/due", {
+        userId: brand._id,
+        amount: dueAmount,
+        reason: dueReason
+      });
+
+      alert("Due added successfully");
+      setDueAmount("");
+      setDueReason("");
+    }}
+    className="bg-red-600 text-white px-4 py-2 rounded"
+  >
+    Add Due
+  </button>
+</div>
+
         {/* ================= SERVICES ================= */}
         <div className="mt-8">
           <ServiceChecklist
@@ -103,9 +147,16 @@ const BrandDrawer = ({ brand, onClose }) => {
                 >
                   {/* ORDER HEADER */}
                   <div className="flex justify-between items-center mb-2">
-                    <span className="font-semibold">
-                      ₹{order.amount}
-                    </span>
+                    <div>
+                      <span className="font-semibold">
+                        ₹{order.amount}
+                      </span>
+                      {order.isReceived && (
+                        <span className="ml-2 text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">
+                          ✓ Received
+                        </span>
+                      )}
+                    </div>
 
                     <span
                       className={`text-xs px-2 py-1 rounded ${
@@ -128,6 +179,13 @@ const BrandDrawer = ({ brand, onClose }) => {
                       </li>
                     ))}
                   </ul>
+
+                  {/* RECEIVED INFO */}
+                  {order.isReceived && order.receivedAt && (
+                    <p className="text-xs text-blue-600 mb-2">
+                      Received: {new Date(order.receivedAt).toLocaleString()}
+                    </p>
+                  )}
 
                   {/* ACTIONS */}
                   <div className="flex gap-3">
@@ -157,6 +215,12 @@ const BrandDrawer = ({ brand, onClose }) => {
                       >
                         Mark Completed
                       </button>
+                    )}
+
+                    {order.status === "COMPLETED" && !order.isReceived && (
+                      <p className="text-xs text-gray-500 italic">
+                        Waiting for client to mark as received
+                      </p>
                     )}
                   </div>
                 </div>

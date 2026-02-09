@@ -46,6 +46,10 @@ export default function Dashboard() {
   const [services, setServices] = useState([]);
   const [servicesLoading, setServicesLoading] = useState(false);
 
+  const [showOrders, setShowOrders] = useState(false);
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+
 
   /* ---------------- TOKEN ---------------- */
   function getTokenSafely() {
@@ -69,6 +73,8 @@ export default function Dashboard() {
 
         const walletData = {
           balance: res.data.balance ?? 0,
+          dueAmount: res.data.dueAmount ?? 0,
+          dueReason: res.data.dueReason ?? null,
           transactions: res.data.transactions ?? []
         };
 
@@ -104,6 +110,8 @@ export default function Dashboard() {
 
         const walletData = {
           balance: res.data.balance ?? 0,
+          dueAmount: res.data.dueAmount ?? 0,
+          dueReason: res.data.dueReason ?? null,
           transactions: res.data.transactions ?? []
         };
 
@@ -122,6 +130,56 @@ export default function Dashboard() {
   }
 };
 
+  const payDue = async () => {
+    if (!wallet?.dueAmount || wallet.dueAmount <= 0) {
+      alert("No due amount to pay");
+      return;
+    }
+
+    try {
+      const dueAmount = wallet.dueAmount;
+      const { data } = await api.post("/api/wallet/create-order", { amount: dueAmount });
+
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: data.amount,
+        currency: "INR",
+        order_id: data.id,
+        name: "Skope Wallet",
+        description: `Pay Due Amount: ₹${formatMoney(dueAmount)}`,
+        handler: async (response) => {
+          await api.post("/api/wallet/verify", {
+            ...response,
+            amount: dueAmount
+          });
+
+          const res = await api.get("/api/wallet");
+
+          const walletData = {
+            balance: res.data.balance ?? 0,
+            dueAmount: res.data.dueAmount ?? 0,
+            dueReason: res.data.dueReason ?? null,
+            transactions: res.data.transactions ?? []
+          };
+
+          setWallet(walletData);
+          setTransactions(walletData.transactions);
+
+          if (walletData.dueAmount === 0) {
+            alert("Due amount cleared successfully!");
+          } else {
+            alert("Payment successful! Due amount partially cleared.");
+          }
+        }
+      };
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      alert("Payment failed");
+      console.error(err);
+    }
+  };
+
   /*----------------Services-----------------*/
     useEffect(() => {
       const fetchServices = async () => {
@@ -138,6 +196,51 @@ export default function Dashboard() {
 
       fetchServices();
     }, []);
+
+  /*----------------Orders-----------------*/
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        setOrdersLoading(true);
+        const res = await api.get("/api/client/orders");
+        setOrders(res.data || []);
+      } catch (err) {
+        console.error("Failed to load orders", err);
+      } finally {
+        setOrdersLoading(false);
+      }
+    };
+
+    fetchOrders();
+    
+    // Refresh orders every 10 seconds to check for completed orders
+    const interval = setInterval(fetchOrders, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const markAsReceived = async (orderId) => {
+    try {
+      await api.patch(`/api/client/orders/${orderId}/receive`);
+      
+      // Update local state
+      setOrders((prev) =>
+        prev.map((o) =>
+          o._id === orderId
+            ? { ...o, isReceived: true, receivedAt: new Date() }
+            : o
+        )
+      );
+      
+      alert("Order marked as received!");
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to mark order as received");
+    }
+  };
+
+  // Count completed but not received orders for notification badge
+  const completedOrdersCount = orders.filter(
+    (o) => o.status === "COMPLETED" && !o.isReceived
+  ).length;
 
 
 
@@ -325,6 +428,20 @@ export default function Dashboard() {
                     Order Dish
                   </button>
                 </div>
+
+                <div className="relative">
+                  <button
+                    onClick={() => setShowOrders(true)}
+                    className="bg-white px-4 py-2 rounded-xl shadow cursor-pointer flex items-center gap-2"
+                  >
+                    Orders
+                    {completedOrdersCount > 0 && (
+                      <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1">
+                        {completedOrdersCount}
+                      </span>
+                    )}
+                  </button>
+                </div>
                 
 
                 <div
@@ -342,7 +459,26 @@ export default function Dashboard() {
                 </button>
               </div>
             </div>
-
+            {wallet?.dueAmount > 0 && (
+              <div className="bg-red-100 border border-red-300 text-red-800 p-4 rounded-lg mb-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <p className="font-semibold">
+                      ⚠️ Pending Due: ₹{formatMoney(wallet.dueAmount)}
+                    </p>
+                    <p className="text-sm mt-1">
+                      {wallet.dueReason || "Please clear the pending amount"}
+                    </p>
+                  </div>
+                  <button
+                    onClick={payDue}
+                    className="ml-4 bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap"
+                  >
+                    Pay Due
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* ---------------- SERVICE CHECKLIST ---------------- */}
             <section className="bg-white mt-10 rounded-2xl p-8 shadow space-y-6">
@@ -490,6 +626,8 @@ export default function Dashboard() {
             </div>
           </div>
         )}
+        
+
 
         {showTransactions && (
           <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
@@ -532,6 +670,126 @@ export default function Dashboard() {
               <button
                 onClick={() => setShowTransactions(false)}
                 className="w-full mt-4 border py-2 rounded"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+
+        {showOrders && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-xl w-[90vw] max-w-4xl max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold">My Orders</h2>
+                <button
+                  onClick={() => setShowOrders(false)}
+                  className="text-gray-500 hover:text-black text-2xl"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {ordersLoading ? (
+                <p className="text-gray-500 text-center py-8">Loading orders...</p>
+              ) : orders.length === 0 ? (
+                <p className="text-gray-500 text-center py-8">No orders placed yet</p>
+              ) : (
+                <div className="space-y-4">
+                  {orders.map((order) => (
+                    <div
+                      key={order._id}
+                      className={`border rounded-lg p-4 ${
+                        order.status === "COMPLETED" && !order.isReceived
+                          ? "bg-green-50 border-green-300"
+                          : ""
+                      }`}
+                    >
+                      {/* ORDER HEADER */}
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <p className="font-semibold text-lg">
+                            Order #{order._id.slice(-6).toUpperCase()}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            Placed: {new Date(order.createdAt).toLocaleString()}
+                          </p>
+                          {order.status === "COMPLETED" && (
+                            <p className="text-sm text-green-600 font-medium mt-1">
+                              ✓ Completed{order.completedAt ? `: ${new Date(order.completedAt).toLocaleString()}` : ""}
+                            </p>
+                          )}
+                          {order.isReceived && order.receivedAt && (
+                            <p className="text-sm text-blue-600 font-medium mt-1">
+                              ✓ Received: {new Date(order.receivedAt).toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="text-right">
+                          <span
+                            className={`text-xs px-3 py-1 rounded-full font-semibold ${
+                              order.status === "PLACED"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : order.status === "PREPARING"
+                                ? "bg-blue-100 text-blue-800"
+                                : order.status === "COMPLETED"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {order.status}
+                          </span>
+                          <p className="font-bold text-lg mt-2">
+                            ₹{formatMoney(order.amount)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* ITEMS */}
+                      <div className="mb-3">
+                        <p className="text-sm font-medium text-gray-700 mb-2">Items:</p>
+                        <ul className="space-y-1">
+                          {order.items.map((item, idx) => (
+                            <li key={idx} className="text-sm text-gray-600">
+                              {item.qty} × {item.dish} - ₹{formatMoney(item.total || item.price * item.qty)}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* COMPLETED NOTIFICATION */}
+                      {order.status === "COMPLETED" && !order.isReceived && (
+                        <div className="bg-green-100 border border-green-300 text-green-800 p-3 rounded-lg mb-3">
+                          <p className="font-semibold">
+                            🎉 Your order is ready! Please mark as received once you receive the materials.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* RECEIVED BUTTON */}
+                      {order.status === "COMPLETED" && !order.isReceived && (
+                        <button
+                          onClick={() => markAsReceived(order._id)}
+                          className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-semibold transition-colors"
+                        >
+                          Mark as Received
+                        </button>
+                      )}
+
+                      {order.isReceived && (
+                        <div className="bg-blue-100 border border-blue-300 text-blue-800 p-2 rounded text-sm text-center">
+                          ✓ Order received and confirmed
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button
+                onClick={() => setShowOrders(false)}
+                className="w-full mt-6 border py-2 rounded-lg hover:bg-gray-50"
               >
                 Close
               </button>

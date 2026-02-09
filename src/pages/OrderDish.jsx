@@ -248,8 +248,106 @@ function CostRow({ label, value }) {
   );
 }
 
+/* ---------- ORDER RECIPE BREAKDOWN (same as Calculate) ---------- */
+function OrderRecipeBreakdown({ data, loading }) {
+  const [expanded, setExpanded] = useState({});
+
+  const toggleExpand = (index) => {
+    setExpanded(prev => ({ ...prev, [index]: !prev[index] }));
+  };
+
+  if (loading) {
+    return (
+      <div className="mt-3 pt-3 border-t">
+        <p className="text-sm text-gray-500">Loading recipe...</p>
+      </div>
+    );
+  }
+  if (!data) {
+    return (
+      <div className="mt-3 pt-3 border-t">
+        <p className="text-sm text-gray-500">Recipe not found or failed to load</p>
+      </div>
+    );
+  }
+  if (!data.breakdown || data.breakdown.length === 0) {
+    return null;
+  }
+
+  const rows = data.breakdown;
+
+  return (
+    <div className="mt-3 pt-3 border-t">
+      <h3 className="text-sm font-semibold text-gray-700 mb-2">Cost Breakdown</h3>
+      <div className="bg-white rounded border overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="p-2 text-left">Item</th>
+              <th className="p-2 text-center">Type</th>
+              <th className="p-2 text-center">Qty</th>
+              <th className="p-2 text-right">Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, index) => {
+              const isSub = row.type === "SUBRECIPE";
+              let parentIndex = null;
+              if (row.level > 0) {
+                for (let j = index - 1; j >= 0; j--) {
+                  if (rows[j].type === "SUBRECIPE") {
+                    parentIndex = j;
+                    break;
+                  }
+                }
+                if (parentIndex !== null && !expanded[parentIndex]) {
+                  return null;
+                }
+              }
+
+              return (
+                <tr key={index} className="border-t">
+                  <td className="p-2">
+                    <div
+                      className={`flex items-center gap-2 ${
+                        row.level > 0 ? "pl-6 text-gray-600" : ""
+                      }`}
+                    >
+                      {isSub && (
+                        <button
+                          onClick={() => toggleExpand(index)}
+                          className="text-xs font-bold w-4"
+                        >
+                          {expanded[index] ? "▼" : "▶"}
+                        </button>
+                      )}
+                      {row.item}
+                    </div>
+                  </td>
+                  <td className="p-2 text-center">{row.type}</td>
+                  <td className="p-2 text-center">
+                    {row.qty} {row.uom}
+                  </td>
+                  <td className="p-2 text-right">₹{row.cost}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-2 flex gap-4 text-xs text-gray-600">
+        <span>Food: ₹{data.foodCost}</span>
+        <span>Packaging: ₹{data.packagingCost}</span>
+        <span>Total: ₹{data.total}</span>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- ORDER MODAL ---------- */
 function OrderModal({ dishes, orderItems, setOrderItems, onClose }) {
+  const [breakdownData, setBreakdownData] = useState({});
+  const [loadingBreakdown, setLoadingBreakdown] = useState({});
   const subtotal = orderItems.reduce((sum, i) => sum + i.total, 0);
 
   const updateItem = async (index, field, value) => {
@@ -257,9 +355,29 @@ function OrderModal({ dishes, orderItems, setOrderItems, onClose }) {
     updated[index][field] = value;
 
     if (field === "dish") {
-      const res = await fetchFoodCost(value, 5);
-      updated[index].price = res.total;
-      updated[index].total = res.total * updated[index].qty;
+      if (value) {
+        setLoadingBreakdown(prev => ({ ...prev, [index]: true }));
+        try {
+          const res = await fetchFoodCost(value, 5);
+          updated[index].price = res.total;
+          updated[index].total = res.total * updated[index].qty;
+          setBreakdownData(prev => ({ ...prev, [index]: res }));
+        } catch (err) {
+          setBreakdownData(prev => ({ ...prev, [index]: null }));
+          updated[index].price = 0;
+          updated[index].total = 0;
+        } finally {
+          setLoadingBreakdown(prev => ({ ...prev, [index]: false }));
+        }
+      } else {
+        setBreakdownData(prev => {
+          const next = { ...prev };
+          delete next[index];
+          return next;
+        });
+        updated[index].price = 0;
+        updated[index].total = 0;
+      }
     }
 
     if (field === "qty") {
@@ -275,41 +393,60 @@ function OrderModal({ dishes, orderItems, setOrderItems, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded-2xl w-[80vw]">
+      <div className="bg-white p-6 rounded-2xl w-[90vw] max-w-6xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between mb-4">
           <h2 className="text-xl font-semibold">Create Order</h2>
-          <button onClick={onClose}>✕</button>
+          <button onClick={onClose} className="text-gray-500 hover:text-black text-2xl">✕</button>
         </div>
 
         <div className="grid grid-cols-3 gap-6">
-          <div className="col-span-2 space-y-4">
-            {orderItems.map((item, i) => (
-              <div key={i} className="grid grid-cols-4 gap-4">
-                <select
-                  value={item.dish}
-                  onChange={(e) => updateItem(i, "dish", e.target.value)}
-                  className="border p-2 rounded"
-                >
-                  <option value="">Select dish</option>
-                  {dishes.map((d, idx) => (
-                    <option key={idx} value={d}>{d}</option>
-                  ))}
-                </select>
+          <div className="col-span-2 space-y-6">
+            {orderItems.map((item, i) => {
+              const data = breakdownData[i];
+              const isLoading = loadingBreakdown[i];
+              
+              return (
+                <div key={i} className="border rounded-lg p-4 space-y-3">
+                  <div className="grid grid-cols-4 gap-4 items-center">
+                    <select
+                      value={item.dish}
+                      onChange={(e) => updateItem(i, "dish", e.target.value)}
+                      className="border p-2 rounded"
+                    >
+                      <option value="">Select dish</option>
+                      {dishes.map((d, idx) => (
+                        <option key={idx} value={d}>{d}</option>
+                      ))}
+                    </select>
 
-                <input
-                  type="number"
-                  min="1"
-                  value={item.qty}
-                  onChange={(e) => updateItem(i, "qty", Number(e.target.value))}
-                  className="border p-2 rounded"
-                />
+                    <input
+                      type="number"
+                      min="1"
+                      value={item.qty}
+                      onChange={(e) => updateItem(i, "qty", Number(e.target.value))}
+                      className="border p-2 rounded"
+                      placeholder="Qty"
+                    />
 
-                <div className="text-right">₹{item.price}</div>
-                <div className="text-right font-semibold">₹{item.total}</div>
-              </div>
-            ))}
+                    <div className="text-right">₹{Number(item.price).toFixed(2)}</div>
+                    <div className="text-right font-semibold">₹{Number(item.total).toFixed(2)}</div>
+                  </div>
 
-            <button onClick={addRow} className="text-blue-600 text-sm">
+                  {/* COST BREAKDOWN - same as Calculate */}
+                  {item.dish && (
+                    <OrderRecipeBreakdown
+                      data={data}
+                      loading={isLoading}
+                    />
+                  )}
+                </div>
+              );
+            })}
+
+            <button 
+              onClick={addRow} 
+              className="text-blue-600 text-sm font-medium hover:underline"
+            >
               + Add another dish
             </button>
           </div>
