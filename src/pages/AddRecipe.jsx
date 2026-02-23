@@ -26,16 +26,10 @@ export default function AddRecipe() {
   const [subRecipes, setSubRecipes] = useState([]);
 
 useEffect(() => {
-  if (!brand) {
-    setSubRecipes([]);
-    return;
-  }
-
   const loadSubRecipes = async () => {
     try {
-      const res = await api.get("/api/subrecipes", {
-        params: { brand }
-      });
+      // Load all subrecipes from collection (no brand filtering)
+      const res = await api.get("/api/subrecipes");
       setSubRecipes(Array.isArray(res.data) ? res.data : []);
     } catch (e) {
       console.error("Failed to load subrecipes", e);
@@ -44,7 +38,7 @@ useEffect(() => {
   };
 
   loadSubRecipes();
-}, [brand]); // 🔥 IMPORTANT
+}, []);
 
 
 

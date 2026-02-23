@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Layout from "../components/Layout";
-import api from "../utils/api";
 
 /* ---------------- SAFE STORAGE HELPERS ---------------- */
 const MEETING_COST = 30;
@@ -53,40 +52,29 @@ const handleSchedule = async (team) => {
   try {
     setLoading(true);
 
-    // 1️⃣ Fetch current wallet balance
-    const walletRes = await api.get("/api/wallet");
-    const balance =
-      walletRes.data?.wallet?.balance ??
-      walletRes.data?.balance ??
-      0;
+    // 1️⃣ Open slot booking page first
+    const bookingTab = window.open(team.link, "_blank", "noopener,noreferrer");
+    if (!bookingTab) {
+      alert("Please allow popups to book a meeting slot.");
+      return;
+    }
 
-    // 2️⃣ Confirm with balance shown
-    const ok = window.confirm(
-      `Confirm Meeting Schedule\n\n` +
-      `Current wallet balance: ₹${balance}\n` +
-      `Amount to be deducted: ₹30\n\n` +
-      `Do you want to continue?`
+    // 2️⃣ Confirm slot booking completion
+    const booked = window.confirm(
+      `After selecting and booking your meeting slot in the opened tab,\n` +
+      `click OK here to confirm booking. Wallet deduction (₹${MEETING_COST}) happens only after slot is actually booked.`
     );
 
-    if (!ok) return;
+    if (!booked) {
+      alert("No amount was deducted. Please book a slot and try again.");
+      return;
+    }
 
-    // 3️⃣ Schedule meeting
-    const res = await api.post("/api/meeting/schedule", {
-      name: user?.name || "User",
-      email: user?.email || "",
-      date: new Date().toISOString(),
-      notes: `Meeting with ${team.team}`,
-    });
-
-    const remainingBalance = res.data?.remainingBalance;
-
+    // 3️⃣ Deduction is handled by backend webhook once Google slot is booked
     alert(
-      `Schedule meet on next page ✅\n\n` +
-      `₹30 has been deducted from your wallet.\n` +
-      `Current wallet balance: ₹${remainingBalance}`
+      `Meeting slot booked successfully ✅\n\n` +
+      `Wallet deduction (₹${MEETING_COST}) will be applied automatically once booking is received from Google Calendar.`
     );
-
-    window.location.href = team.link;
   } catch (err) {
     if (err?.response?.status === 400) {
       alert(err.response.data.message || "Insufficient wallet balance.");
@@ -112,8 +100,7 @@ const handleSchedule = async (team) => {
       role: "Executive Chef",
       team: "Culinary Team",
       image: "/assets/chef.jpg",
-      link:
-        "https://calendar.google.com/calendar/u/0/appointments/schedules/AcZssZ0sqwXdi-0lMbxcy9Rws29YWFm1fL3iGxKSdJZzE7aGoOpxBNoFWoVNOOyto2tPh7pEciz2FnD_",
+      link: "https://calendar.app.google/3MZg1pkC1aY1pLNK9"
     },
     {
       name: "Sanjuktha Babu",

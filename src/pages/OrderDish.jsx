@@ -249,7 +249,7 @@ function CostRow({ label, value }) {
 }
 
 /* ---------- ORDER RECIPE BREAKDOWN (same as Calculate) ---------- */
-function OrderRecipeBreakdown({ data, loading }) {
+export function OrderRecipeBreakdown({ data, loading }) {
   const [expanded, setExpanded] = useState({});
 
   const toggleExpand = (index) => {

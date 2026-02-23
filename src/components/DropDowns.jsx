@@ -51,14 +51,6 @@ export function SubRecipeDropdown({ value, onChange, subRecipes, onAddNew }) {
         ))}
       </select>
 
-      {/* ➕ Add new subrecipe */}
-      <button
-        type="button"
-        onClick={onAddNew}
-        className="px-3 rounded bg-black text-white text-sm"
-      >
-        +
-      </button>
     </div>
   );
 }

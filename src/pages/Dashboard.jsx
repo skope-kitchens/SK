@@ -18,6 +18,13 @@ const formatMoney = (value) =>
     maximumFractionDigits: 2,
   });
 
+  const CREDIT_PER_HOUR = 60;
+
+const calculateMeetingHours = (balance) => {
+  if (!balance) return 0;
+  return balance / CREDIT_PER_HOUR;
+};
+
 export default function Dashboard() {
   const navigate = useNavigate();
 
@@ -30,6 +37,7 @@ export default function Dashboard() {
 
 
   const [wallet, setWallet] = useState(null);
+  const meetingHours = calculateMeetingHours(wallet?.balance);
   const [showWallet, setShowWallet] = useState(false);
 
   const [showTransactions, setShowTransactions] = useState(false);
@@ -449,6 +457,12 @@ export default function Dashboard() {
                   className="bg-white px-4 py-2 rounded-xl flex items-center shadow cursor-pointer"
                 >
                   Wallet: ₹{formatMoney(wallet?.balance)}
+                </div>
+                <div className="bg-white px-4 py-2 rounded-xl shadow cursor-default">
+                  <p className="text-xs text-gray-500">Meeting Time Left</p>
+                  <p className="font-semibold text-blue-600">
+                    {meetingHours.toFixed(1)} hrs
+                  </p>
                 </div>
 
                 <button

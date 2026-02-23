@@ -66,7 +66,8 @@ export default function RecipeItem({ node, onChange, inventory, subRecipes }) {
 
               update({
                 refId: selected.name,
-                netPrice: selected.averageCost || 0,
+                // Price is always entered manually by user (no auto-fill from inventory/Rista)
+                netPrice: "",
                 uom: selected.measuringUnit === "GM" ? "GM" : "PC",
                 category:
                   selected.categoryName === "PACKAGING"
@@ -138,6 +139,7 @@ export default function RecipeItem({ node, onChange, inventory, subRecipes }) {
       <input
         type="number"
         value={node.netPrice}
+        placeholder="Custom"
         disabled={node.type === "SUBRECIPE"}
         onChange={(e) => update({ netPrice: e.target.value })}
         className="col-span-1 border rounded px-1 py-1 disabled:bg-gray-100"
