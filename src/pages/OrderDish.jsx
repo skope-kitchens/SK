@@ -249,7 +249,7 @@ function CostRow({ label, value }) {
 }
 
 /* ---------- ORDER RECIPE BREAKDOWN (same as Calculate) ---------- */
-export function OrderRecipeBreakdown({ data, loading }) {
+export function OrderRecipeBreakdown({ data, loading, multiplier = 1 }) {
   const [expanded, setExpanded] = useState({});
 
   const toggleExpand = (index) => {
@@ -274,7 +274,12 @@ export function OrderRecipeBreakdown({ data, loading }) {
     return null;
   }
 
-  const rows = data.breakdown;
+  const m = Number(multiplier) || 1;
+  const rows = data.breakdown.map((row) => ({
+    ...row,
+    qty: typeof row.qty === "number" ? row.qty * m : row.qty,
+    cost: typeof row.cost === "number" ? row.cost * m : row.cost,
+  }));
 
   return (
     <div className="mt-3 pt-3 border-t">
@@ -336,9 +341,9 @@ export function OrderRecipeBreakdown({ data, loading }) {
         </table>
       </div>
       <div className="mt-2 flex gap-4 text-xs text-gray-600">
-        <span>Food: ₹{data.foodCost}</span>
-        <span>Packaging: ₹{data.packagingCost}</span>
-        <span>Total: ₹{data.total}</span>
+        <span>Food: ₹{Number(data.foodCost || 0) * m}</span>
+        <span>Packaging: ₹{Number(data.packagingCost || 0) * m}</span>
+        <span>Total: ₹{Number(data.total || 0) * m}</span>
       </div>
     </div>
   );

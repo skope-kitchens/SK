@@ -1,7 +1,7 @@
-import { IngredientDropdown, SubRecipeDropdown } from "./DropDowns.jsx";
+import { SubRecipeDropdown } from "./DropDowns.jsx";
 import api from "../utils/api.js";
 
-export default function RecipeItem({ node, onChange, inventory, subRecipes }) {
+export default function RecipeItem({ node, onChange, subRecipes }) {
   const update = (patch) => onChange({ ...node, ...patch });
 
   const isIngredient = node.type === "INGREDIENT";
@@ -30,8 +30,8 @@ export default function RecipeItem({ node, onChange, inventory, subRecipes }) {
         }
         className="col-span-1 border rounded px-1 py-1"
       >
-        <option value="INGREDIENT">Ing</option>
-        <option value="SUBRECIPE">Sub</option>
+        <option value="INGREDIENT">Ingredient</option>
+        <option value="SUBRECIPE">Sub-recipe</option>
       </select>
 
       {/* YIELD (enabled for both) */}
@@ -51,30 +51,18 @@ export default function RecipeItem({ node, onChange, inventory, subRecipes }) {
         className="col-span-1 border rounded px-1 py-1 disabled:bg-gray-100"
       >
         <option value="Food">Food</option>
-        <option value="Packaging">Pack</option>
+        <option value="Packaging">Packaging</option>
       </select>
 
       {/* ITEM */}
       <div className="col-span-2">
         {isIngredient ? (
-          <IngredientDropdown
-            value={node.refId}
-            inventory={inventory}
-            onChange={(itemName) => {
-              const selected = inventory.find(i => i.name === itemName);
-              if (!selected) return;
-
-              update({
-                refId: selected.name,
-                // Price is always entered manually by user (no auto-fill from inventory/Rista)
-                netPrice: "",
-                uom: selected.measuringUnit === "GM" ? "GM" : "PC",
-                category:
-                  selected.categoryName === "PACKAGING"
-                    ? "Packaging"
-                    : "Food",
-              });
-            }}
+          <input
+            type="text"
+            value={node.refId || ""}
+            onChange={(e) => update({ refId: e.target.value })}
+            placeholder="Ingredient name"
+            className="w-full border rounded px-2 py-1"
           />
         ) : (
           <SubRecipeDropdown

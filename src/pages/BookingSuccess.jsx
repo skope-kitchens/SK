@@ -2,11 +2,21 @@ import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "../utils/api";
 
+// MANUAL TEST (Calendly simulation):
+// 1. Start a booking via the app to create a HOLD session.
+// 2. Copy the returned sessionId.
+// 3. Open: http://localhost:5173/booking-success?a1=<PASTE_SESSION_ID>
+// This should call /api/meeting/confirm, deduct wallet, and redirect to dashboard.
+
 const BookingSuccess = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const sessionId = searchParams.get("sessionId");
+  // Calendly redirects as /booking-success?a1=<sessionId>
+  const sessionIdFromA1 = searchParams.get("a1");
+  const sessionIdFromLegacy = searchParams.get("sessionId");
+  const sessionId = sessionIdFromA1 || sessionIdFromLegacy || null;
+
   const [status, setStatus] = useState("loading"); // loading | success | error | invalid
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -16,6 +26,12 @@ const BookingSuccess = () => {
 
   const confirmBooking = useCallback(async () => {
     if (!sessionId) return;
+
+    console.log("[BOOKING_SUCCESS] Calling confirm API", {
+      href: window.location.href,
+      searchParams: Object.fromEntries(searchParams.entries()),
+      sessionId,
+    });
 
     setStatus("loading");
     setErrorMessage("");
@@ -27,6 +43,10 @@ const BookingSuccess = () => {
         { withCredentials: true }
       );
 
+      console.log("[BOOKING_SUCCESS] Confirm API response", {
+        data: res.data,
+      });
+
       if (localStorageKey) {
         localStorage.setItem(localStorageKey, "true");
       }
@@ -34,17 +54,28 @@ const BookingSuccess = () => {
       // We could use res.data.amountDeducted if backend changes; spec says ₹50.
       setStatus("success");
     } catch (err) {
-      console.error("Booking confirmation failed", err);
+      console.error("[BOOKING_SUCCESS] Booking confirmation failed", {
+        error: err,
+        response: err?.response,
+      });
       setStatus("error");
       setErrorMessage(
         err?.response?.data?.message ||
           "Booking found but payment confirmation failed."
       );
     }
-  }, [sessionId, localStorageKey]);
+  }, [sessionId, localStorageKey, searchParams]);
 
   // Initial effect – run once for this sessionId.
   useEffect(() => {
+    console.log("[BOOKING_SUCCESS] Mount / param parse", {
+      href: window.location.href,
+      searchParams: Object.fromEntries(searchParams.entries()),
+      sessionIdFromA1,
+      sessionIdFromLegacy,
+      effectiveSessionId: sessionId,
+    });
+
     if (!sessionId) {
       setStatus("invalid");
       return;
@@ -56,8 +87,12 @@ const BookingSuccess = () => {
       return;
     }
 
+    console.log("[BOOKING_SUCCESS] Auto-confirming booking", {
+      sessionId,
+    });
+
     confirmBooking();
-  }, [sessionId, localStorageKey, confirmBooking]);
+  }, [sessionId, localStorageKey, confirmBooking, searchParams, sessionIdFromA1, sessionIdFromLegacy]);
 
   // Auto-redirect to dashboard after success.
   useEffect(() => {
@@ -78,7 +113,7 @@ const BookingSuccess = () => {
   if (status === "success") {
     icon = "✔";
     title = "Your meeting is confirmed 🎉";
-    description = "₹50 has been deducted from your wallet.";
+    description = "₹60 has been deducted from your wallet.";
   } else if (status === "error") {
     icon = "❌";
     title = "Booking found but payment confirmation failed.";

@@ -34,7 +34,7 @@ const AdminDashboard = () => {
               onClick={() => setShowRecipesModal(true)}
               className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition"
             >
-              Recipes
+              Update Recipe
             </button>
             <button
               onClick={handleLogout}
@@ -70,53 +70,124 @@ const AdminDashboard = () => {
 };
 
 /* ---------- RECIPES MODAL ---------- */
+const TAB_MAIN = "main";
+const TAB_SUB = "sub";
+
 function RecipesModal({ onClose }) {
-  const [recipes, setRecipes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [expandedId, setExpandedId] = useState(null);
-  const [breakdown, setBreakdown] = useState(null);
-  const [loadingBreakdown, setLoadingBreakdown] = useState(false);
+  const [tab, setTab] = useState(TAB_MAIN);
+  const [mainList, setMainList] = useState([]);
+  const [subList, setSubList] = useState([]);
+  const [loadingList, setLoadingList] = useState(true);
+  const [selectedRecipe, setSelectedRecipe] = useState(null);
+  const [items, setItems] = useState([]);
+  const [loadingRecipe, setLoadingRecipe] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const fetchRecipes = async () => {
+    const fetch = async () => {
+      setLoadingList(true);
       try {
-        setLoading(true);
-        const res = await api.get("/api/admin/recipes");
-        setRecipes(res.data || []);
+        const [mainRes, subRes] = await Promise.all([
+          api.get("/api/admin/recipes"),
+          api.get("/api/admin/subrecipes"),
+        ]);
+        setMainList(mainRes.data || []);
+        setSubList(subRes.data || []);
       } catch (err) {
-        console.error("Failed to load recipes", err);
+        console.error("Failed to load recipe lists", err);
       } finally {
-        setLoading(false);
+        setLoadingList(false);
       }
     };
-    fetchRecipes();
+    fetch();
   }, []);
 
-  const fetchBreakdown = async (recipeId) => {
-    if (expandedId === recipeId) {
-      setExpandedId(null);
-      setBreakdown(null);
-      return;
-    }
-    setExpandedId(recipeId);
-    setBreakdown(null);
+  const loadMainRecipe = async (recipeId) => {
+    setSelectedRecipe(null);
+    setItems([]);
+    setLoadingRecipe(true);
     try {
-      setLoadingBreakdown(true);
-      const res = await api.get(`/api/admin/recipes/${recipeId}/breakdown`);
-      setBreakdown(res.data);
+      const res = await api.get(`/api/admin/recipes/${recipeId}`);
+      const doc = res.data;
+      setSelectedRecipe({ _id: doc._id, recipeName: doc.recipeName, brand: doc.brand, kind: TAB_MAIN });
+      setItems(Array.isArray(doc.items) ? doc.items.map((i) => ({ ...i })) : []);
     } catch (err) {
-      console.error("Failed to load breakdown", err);
-      setExpandedId(null);
+      console.error("Failed to load main recipe", err);
     } finally {
-      setLoadingBreakdown(false);
+      setLoadingRecipe(false);
     }
   };
 
+  const loadSubRecipe = async (id) => {
+    setSelectedRecipe(null);
+    setItems([]);
+    setLoadingRecipe(true);
+    try {
+      const res = await api.get(`/api/admin/subrecipes/${id}`);
+      const doc = res.data;
+      setSelectedRecipe({ _id: doc._id, recipeName: doc.recipeName, brand: doc.brand, kind: TAB_SUB });
+      setItems(Array.isArray(doc.items) ? doc.items.map((i) => ({ ...i })) : []);
+    } catch (err) {
+      console.error("Failed to load sub recipe", err);
+    } finally {
+      setLoadingRecipe(false);
+    }
+  };
+
+  const updateItem = (index, field, value) => {
+    setItems((prev) => {
+      const next = [...prev];
+      if (!next[index]) return prev;
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
+
+  const addItem = () => {
+    setItems((prev) => [
+      ...prev,
+      {
+        type: "INGREDIENT",
+        category: "Food",
+        refId: "",
+        quantity: 0,
+        uom: "GM",
+        netPrice: 0,
+      },
+    ]);
+  };
+
+  const removeItem = (index) => {
+    setItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSave = async () => {
+    if (!selectedRecipe) return;
+    setSaving(true);
+    try {
+      const payload = { items };
+      if (selectedRecipe.kind === TAB_MAIN) {
+        await api.put(`/api/admin/recipes/${selectedRecipe._id}`, payload);
+      } else {
+        await api.put(`/api/admin/subrecipes/${selectedRecipe._id}`, payload);
+      }
+      setSelectedRecipe(null);
+      setItems([]);
+    } catch (err) {
+      console.error("Failed to save recipe", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const list = tab === TAB_MAIN ? mainList : subList;
+  const onSelect = tab === TAB_MAIN ? loadMainRecipe : loadSubRecipe;
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl w-[90vw] max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-white rounded-2xl w-[90vw] max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
         <div className="flex justify-between items-center p-6 border-b">
-          <h2 className="text-2xl font-bold">All Recipes</h2>
+          <h2 className="text-2xl font-bold">Update Recipe</h2>
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-black text-2xl"
@@ -125,127 +196,170 @@ function RecipesModal({ onClose }) {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
-          {loading ? (
-            <p className="text-gray-500 text-center py-8">Loading recipes...</p>
-          ) : recipes.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">No recipes found</p>
-          ) : (
-            <div className="space-y-2">
-              {recipes.map((r) => (
-                <div
-                  key={r._id}
-                  className="border rounded-lg overflow-hidden"
-                >
-                  <button
-                    onClick={() => fetchBreakdown(r._id)}
-                    className="w-full flex justify-between items-center p-4 text-left hover:bg-gray-50"
-                  >
-                    <div>
-                      <span className="font-semibold">{r.recipeName}</span>
-                      <span className="ml-2 text-sm text-gray-500">({r.brand})</span>
-                    </div>
-                    <span className="text-gray-400">
-                      {expandedId === r._id ? "▼" : "▶"}
-                    </span>
-                  </button>
+        <div className="flex border-b">
+          <button
+            onClick={() => { setTab(TAB_MAIN); setSelectedRecipe(null); setItems([]); }}
+            className={`px-6 py-3 font-medium ${tab === TAB_MAIN ? "border-b-2 border-black text-black" : "text-gray-500"}`}
+          >
+            Main Recipes
+          </button>
+          <button
+            onClick={() => { setTab(TAB_SUB); setSelectedRecipe(null); setItems([]); }}
+            className={`px-6 py-3 font-medium ${tab === TAB_SUB ? "border-b-2 border-black text-black" : "text-gray-500"}`}
+          >
+            Sub Recipes
+          </button>
+        </div>
 
-                  {expandedId === r._id && (
-                    <RecipeBreakdownTable
-                      breakdown={breakdown}
-                      loading={loadingBreakdown}
-                      recipeName={r.recipeName}
-                    />
-                  )}
+        <div className="flex-1 overflow-hidden flex min-h-0">
+          <div className="w-72 border-r overflow-y-auto p-4">
+            {loadingList ? (
+              <p className="text-gray-500 text-sm">Loading...</p>
+            ) : list.length === 0 ? (
+              <p className="text-gray-500 text-sm">No recipes</p>
+            ) : (
+              <ul className="space-y-1">
+                {list.map((r) => (
+                  <li key={r._id}>
+                    <button
+                      onClick={() => onSelect(r._id)}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-sm ${selectedRecipe?._id === r._id ? "bg-black text-white" : "hover:bg-gray-100"}`}
+                    >
+                      {r.recipeName}
+                      {r.brand && <span className="opacity-80 ml-1">({r.brand})</span>}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-6">
+            {loadingRecipe ? (
+              <p className="text-gray-500">Loading recipe...</p>
+            ) : selectedRecipe ? (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">
+                    {selectedRecipe.recipeName}
+                    {selectedRecipe.brand && <span className="text-gray-500 font-normal ml-2">({selectedRecipe.brand})</span>}
+                  </h3>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={addItem}
+                      className="bg-gray-200 hover:bg-gray-300 px-3 py-1.5 rounded text-sm"
+                    >
+                      Add ingredient
+                    </button>
+                    <button
+                      onClick={handleSave}
+                      disabled={saving}
+                      className="bg-black text-white px-4 py-1.5 rounded text-sm disabled:opacity-50"
+                    >
+                      {saving ? "Saving..." : "Save"}
+                    </button>
+                  </div>
                 </div>
-              ))}
-            </div>
-          )}
+                <UpdateRecipeItemsTable
+                  items={items}
+                  onUpdate={updateItem}
+                  onRemove={removeItem}
+                  isSubRecipe={selectedRecipe.kind === TAB_SUB}
+                />
+              </>
+            ) : (
+              <p className="text-gray-500">Select a recipe to edit.</p>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-/* ---------- RECIPE BREAKDOWN TABLE (expandable like client) ---------- */
-function RecipeBreakdownTable({ breakdown, loading, recipeName }) {
-  const [expanded, setExpanded] = useState({});
-
-  const toggleExpand = (index) => {
-    setExpanded((prev) => ({ ...prev, [index]: !prev[index] }));
-  };
-
-  if (loading) {
-    return (
-      <div className="border-t bg-gray-50 p-4">
-        <p className="text-sm text-gray-500">Loading breakdown...</p>
-      </div>
-    );
-  }
-  if (!breakdown || breakdown.recipeName !== recipeName) {
-    return null;
-  }
-
-  const rows = breakdown.breakdown || [];
-
+/* ---------- EDITABLE ITEMS TABLE FOR UPDATE RECIPE ---------- */
+function UpdateRecipeItemsTable({ items, onUpdate, onRemove, isSubRecipe }) {
   return (
-    <div className="border-t bg-gray-50 p-4">
-      <div className="bg-white rounded-lg overflow-hidden border">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="p-2 text-left">Item</th>
-              <th className="p-2 text-center">Type</th>
-              <th className="p-2 text-center">Qty</th>
-              <th className="p-2 text-right">Cost</th>
+    <div className="border rounded-lg overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead className="bg-gray-100">
+          <tr>
+            {!isSubRecipe && <th className="p-2 text-left w-28">Type</th>}
+            <th className="p-2 text-left">Item</th>
+            <th className="p-2 w-24">Qty</th>
+            <th className="p-2 w-20">UOM</th>
+            <th className="p-2 w-28">Price (₹)</th>
+            <th className="p-2 w-16"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item, index) => (
+            <tr key={index} className="border-t">
+              {!isSubRecipe && (
+                <td className="p-2">
+                  <select
+                    value={item.type || "INGREDIENT"}
+                    onChange={(e) => onUpdate(index, "type", e.target.value)}
+                    className="w-full border rounded px-2 py-1 text-sm"
+                  >
+                    <option value="INGREDIENT">INGREDIENT</option>
+                    <option value="SUBRECIPE">SUBRECIPE</option>
+                  </select>
+                </td>
+              )}
+              <td className="p-2">
+                <input
+                  type="text"
+                  value={item.refId ?? ""}
+                  onChange={(e) => onUpdate(index, "refId", e.target.value)}
+                  placeholder="Name"
+                  className="w-full border rounded px-2 py-1 text-sm"
+                />
+              </td>
+              <td className="p-2">
+                <input
+                  type="number"
+                  min={0}
+                  step="any"
+                  value={item.quantity ?? ""}
+                  onChange={(e) => onUpdate(index, "quantity", parseFloat(e.target.value) || 0)}
+                  className="w-full border rounded px-2 py-1 text-sm"
+                />
+              </td>
+              <td className="p-2">
+                <select
+                  value={item.uom || "GM"}
+                  onChange={(e) => onUpdate(index, "uom", e.target.value)}
+                  className="w-full border rounded px-2 py-1 text-sm"
+                >
+                  <option value="PC">PC</option>
+                  <option value="GM">GM</option>
+                  <option value="KG">KG</option>
+                </select>
+              </td>
+              <td className="p-2">
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={item.netPrice ?? ""}
+                  onChange={(e) => onUpdate(index, "netPrice", parseFloat(e.target.value) || 0)}
+                  className="w-full border rounded px-2 py-1 text-sm"
+                />
+              </td>
+              <td className="p-2">
+                <button
+                  type="button"
+                  onClick={() => onRemove(index)}
+                  className="text-red-600 hover:text-red-800 text-sm"
+                >
+                  Delete
+                </button>
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, index) => {
-              const isSub = row.type === "SUBRECIPE";
-              let parentIndex = null;
-              if (row.level > 0) {
-                for (let j = index - 1; j >= 0; j--) {
-                  if (rows[j].type === "SUBRECIPE") {
-                    parentIndex = j;
-                    break;
-                  }
-                }
-                if (parentIndex !== null && !expanded[parentIndex]) {
-                  return null;
-                }
-              }
-
-              return (
-                <tr key={index} className="border-t">
-                  <td className="p-2">
-                    <div
-                      className={`flex items-center gap-2 ${
-                        row.level > 0 ? "pl-6 text-gray-600" : ""
-                      }`}
-                    >
-                      {isSub && (
-                        <button
-                          onClick={() => toggleExpand(index)}
-                          className="text-xs font-bold w-4"
-                        >
-                          {expanded[index] ? "▼" : "▶"}
-                        </button>
-                      )}
-                      {row.item}
-                    </div>
-                  </td>
-                  <td className="p-2 text-center">{row.type}</td>
-                  <td className="p-2 text-center">
-                    {row.qty} {row.uom}
-                  </td>
-                  <td className="p-2 text-right">₹{row.cost}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

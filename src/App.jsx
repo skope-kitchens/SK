@@ -20,8 +20,6 @@ import OrderDish from './pages/OrderDish'
 import VendorEligibility from './pages/VendorEligibility'
 import AdminDashboard from './pages/AdminDashboard'
 import AddRecipe from './pages/AddRecipe'
-import BookingSuccess from "./pages/BookingSuccess"
-
 function App() {
   return (
     <Router
@@ -53,7 +51,6 @@ function App() {
         <Route path="/vendor-eligibility" element={<VendorEligibility />}/>
         <Route path="/admin-dashboard" element={<AdminDashboard />}/>
         <Route path="/add-recipe" element={<AddRecipe />}/>
-        <Route path="/booking-success" element={<BookingSuccess />} />
       </Routes>
     </Router>
   )

@@ -329,6 +329,8 @@ const BrandDrawer = ({ brand, onClose }) => {
                     <OrderRecipeBreakdown
                       data={getBreakdown(order._id, item.dish).data}
                       loading={getBreakdown(order._id, item.dish).loading}
+                      // Scale ingredient quantities and costs by ordered dish quantity
+                      multiplier={item.qty || 1}
                     />
                   </li>
                 ))}

@@ -18,7 +18,6 @@ const EMPTY_NODE = () => ({
 
 export default function AddRecipe() {
   const [recipeType, setRecipeType] = useState("MAIN"); 
-  const [inventory, setInventory] = useState([]);
   const [branchCode, setBranchCode] = useState("");
   const [brand, setBrand] = useState("");
   const [recipeName, setRecipeName] = useState("");
@@ -41,24 +40,6 @@ useEffect(() => {
 }, []);
 
 
-
-
-useEffect(() => {
-  if (!branchCode || branchCode.length < 2) {
-    setInventory([]);
-    return;
-  }
-
-  api
-    .get("/api/inventory/items", {
-      params: { branchCode: branchCode.trim().toUpperCase() },
-    })
-    .then(res => {
-      setInventory(Array.isArray(res.data?.data) ? res.data.data : []);
-    })
-    .catch(() => setInventory([]));
-
-}, [branchCode]);
 
 
   const saveRecipe = async () => {
@@ -163,8 +144,6 @@ useEffect(() => {
               <RecipeItem
                 key={i}
                 node={item}
-                brand={brand}
-                inventory={inventory}
                 subRecipes={subRecipes}
                 onChange={(updated) => {
                   const arr = [...items];
