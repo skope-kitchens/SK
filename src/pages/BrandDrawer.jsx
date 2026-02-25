@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import api from "../utils/api";
-import { fetchFoodCost } from "../utils/costingapi";
 import { OrderRecipeBreakdown } from "./OrderDish";
 
 import WalletPanel from "./WalletPanel";
@@ -12,7 +11,6 @@ const BrandDrawer = ({ brand, onClose }) => {
   const [dueAmount, setDueAmount] = useState("");
   const [dueReason, setDueReason] = useState("");
   const [showRecipesOrderId, setShowRecipesOrderId] = useState(null);
-  const [recipeBreakdowns, setRecipeBreakdowns] = useState({});
 
 
   /* ================= FETCH ORDERS ================= */
@@ -64,43 +62,6 @@ const BrandDrawer = ({ brand, onClose }) => {
       alert(err.response?.data?.message || "Failed to delete order");
     }
   };
-
-  /* ================= FETCH RECIPE BREAKDOWNS WHEN RECIPES MODAL OPENS ================= */
-  useEffect(() => {
-    if (!showRecipesOrderId) return;
-    const order = orders.find((o) => o._id === showRecipesOrderId);
-    if (!order?.items?.length) return;
-
-    const orderId = order._id;
-    const dishes = [...new Set(order.items.map((i) => i.dish).filter(Boolean))];
-    const toFetch = dishes.filter((dish) => {
-      const key = `${orderId}:${dish}`;
-      return !recipeBreakdowns[key]?.data && !recipeBreakdowns[key]?.loading;
-    });
-    if (toFetch.length === 0) return;
-
-    setRecipeBreakdowns((prev) => {
-      const next = { ...prev };
-      toFetch.forEach((dish) => {
-        next[`${orderId}:${dish}`] = { loading: true, data: null };
-      });
-      return next;
-    });
-
-    const brandNameForCosting = brand?.brandName || null;
-    toFetch.forEach((dish) => {
-      const key = `${orderId}:${dish}`;
-      fetchFoodCost(dish, 5, brandNameForCosting)
-        .then((data) => {
-          setRecipeBreakdowns((prev) => ({ ...prev, [key]: { loading: false, data } }));
-        })
-        .catch(() => {
-          setRecipeBreakdowns((prev) => ({ ...prev, [key]: { loading: false, data: null } }));
-        });
-    });
-  }, [showRecipesOrderId, orders, recipeBreakdowns, brand?.brandName]);
-
-  const getBreakdown = (orderId, dish) => recipeBreakdowns[`${orderId}:${dish}`] || { loading: false, data: null };
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -321,19 +282,37 @@ const BrandDrawer = ({ brand, onClose }) => {
                 </button>
               </div>
               <ul className="space-y-6">
-                {order.items.map((item, idx) => (
-                  <li key={idx} className="border rounded-lg p-4">
-                    <p className="font-medium text-gray-800 mb-2">
-                      {item.qty} × {item.dish}
-                    </p>
-                    <OrderRecipeBreakdown
-                      data={getBreakdown(order._id, item.dish).data}
-                      loading={getBreakdown(order._id, item.dish).loading}
-                      // Scale ingredient quantities and costs by ordered dish quantity
-                      multiplier={item.qty || 1}
-                    />
-                  </li>
-                ))}
+                {order.items.map((item, idx) => {
+                  const rows = item.breakdown || [];
+                  const foodCost = rows
+                    .filter((b) => b.category === "Food")
+                    .reduce((s, b) => s + (Number(b.cost) || 0), 0);
+                  const packagingCost = rows
+                    .filter((b) => b.category === "Packaging")
+                    .reduce((s, b) => s + (Number(b.cost) || 0), 0);
+                  const total = foodCost + packagingCost;
+                  const data = rows.length
+                    ? { breakdown: rows, foodCost, packagingCost, total }
+                    : null;
+                  return (
+                    <li key={idx} className="border rounded-lg p-4">
+                      <p className="font-medium text-gray-800 mb-2">
+                        {item.qty} × {item.dish}
+                      </p>
+                      {data ? (
+                        <OrderRecipeBreakdown
+                          data={data}
+                          loading={false}
+                          multiplier={1}
+                        />
+                      ) : (
+                        <p className="text-xs text-gray-500">
+                          No breakdown data stored for this order.
+                        </p>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           </div>

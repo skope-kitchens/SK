@@ -9,6 +9,7 @@ const AdminDashboard = () => {
   const [selectedBrand, setSelectedBrand] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0); // 👈 IMPORTANT
   const [showRecipesModal, setShowRecipesModal] = useState(false);
+  const [showIngredientsModal, setShowIngredientsModal] = useState(false);
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -35,6 +36,12 @@ const AdminDashboard = () => {
               className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition"
             >
               Update Recipe
+            </button>
+            <button
+              onClick={() => setShowIngredientsModal(true)}
+              className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition"
+            >
+              Update Ingredients
             </button>
             <button
               onClick={handleLogout}
@@ -64,10 +71,195 @@ const AdminDashboard = () => {
         {showRecipesModal && (
           <RecipesModal onClose={() => setShowRecipesModal(false)} />
         )}
+        {showIngredientsModal && (
+          <IngredientsModal onClose={() => setShowIngredientsModal(false)} />
+        )}
       </div>
     </Layout>
   );
 };
+
+/* ---------- INGREDIENTS BULK UPDATE MODAL ---------- */
+function IngredientsModal({ onClose }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const fetchIngredients = async () => {
+      try {
+        setLoading(true);
+        const res = await api.get("/api/admin/ingredients");
+        const list = res.data?.ingredients || [];
+        setRows(
+          list.map((ing) => ({
+            ...ing,
+            percent: "",
+            newPrice: ing.currentPrice,
+          }))
+        );
+      } catch (err) {
+        console.error("Failed to load ingredients", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchIngredients();
+  }, []);
+
+  const handlePercentChange = (index, value) => {
+    setRows((prev) => {
+      const next = [...prev];
+      const row = next[index];
+      if (!row) return prev;
+      const pct = Number(value) || 0;
+      const base = Number(row.currentPrice) || 0;
+      const newPrice = base + (base * pct) / 100;
+      next[index] = {
+        ...row,
+        percent: value,
+        newPrice: Number(newPrice.toFixed(2)),
+      };
+      return next;
+    });
+  };
+
+  const handleNewPriceChange = (index, value) => {
+    setRows((prev) => {
+      const next = [...prev];
+      const row = next[index];
+      if (!row) return prev;
+      const price = Number(value);
+      next[index] = {
+        ...row,
+        newPrice: Number.isFinite(price) ? price : row.newPrice,
+        percent: "",
+      };
+      return next;
+    });
+  };
+
+  const handleSave = async () => {
+    const updates = rows
+      .filter(
+        (r) =>
+          typeof r.newPrice === "number" &&
+          r.newPrice >= 0 &&
+          r.newPrice !== r.currentPrice
+      )
+      .map((r) => ({
+        refId: r.refId,
+        uom: r.uom,
+        newPrice: r.newPrice,
+      }));
+
+    if (updates.length === 0) {
+      onClose();
+      return;
+    }
+
+    try {
+      setSaving(true);
+      await api.post("/api/admin/ingredients/bulk-update", { updates });
+      onClose();
+    } catch (err) {
+      console.error("Failed to update ingredients", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl w-[95vw] max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="flex justify-between items-center p-6 border-b">
+          <h2 className="text-2xl font-bold">Update Ingredients</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-black text-2xl"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="flex-1 overflow-auto p-6">
+          {loading ? (
+            <p className="text-gray-500 text-sm">Loading ingredients...</p>
+          ) : rows.length === 0 ? (
+            <p className="text-gray-500 text-sm">No ingredients found.</p>
+          ) : (
+            <table className="w-full text-sm border">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="p-2 text-left">Ingredient</th>
+                  <th className="p-2 text-center">UOM</th>
+                  <th className="p-2 text-right">Current Price</th>
+                  <th className="p-2 text-center w-32">% Increase</th>
+                  <th className="p-2 text-right w-32">New Price</th>
+                  <th className="p-2 text-center w-28">Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, index) => (
+                  <tr key={row.id} className="border-t">
+                    <td className="p-2">
+                      <div className="font-medium">{row.refId}</div>
+                    </td>
+                    <td className="p-2 text-center">{row.uom || "-"}</td>
+                    <td className="p-2 text-right">
+                      ₹{Number(row.currentPrice || 0).toFixed(2)}
+                    </td>
+                    <td className="p-2 text-center">
+                      <input
+                        type="number"
+                        className="w-20 border rounded px-1 py-0.5 text-right"
+                        value={row.percent}
+                        onChange={(e) =>
+                          handlePercentChange(index, e.target.value)
+                        }
+                        placeholder="%"
+                      />
+                    </td>
+                    <td className="p-2 text-right">
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="w-24 border rounded px-1 py-0.5 text-right"
+                        value={row.newPrice}
+                        onChange={(e) =>
+                          handleNewPriceChange(index, e.target.value)
+                        }
+                      />
+                    </td>
+                    <td className="p-2 text-center text-xs text-gray-500">
+                      {row.pricesVary ? "Varies across recipes" : ""}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+        <div className="flex justify-end gap-3 p-4 border-t">
+          <button
+            type="button"
+            className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={saving}
+            className="px-4 py-2 text-sm rounded-lg bg-black text-white disabled:opacity-50 hover:bg-gray-800"
+            onClick={handleSave}
+          >
+            {saving ? "Saving..." : "Save"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /* ---------- RECIPES MODAL ---------- */
 const TAB_MAIN = "main";

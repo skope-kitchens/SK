@@ -232,6 +232,8 @@ export default function OrderDish() {
           orderItems={orderItems}
           setOrderItems={setOrderItems}
           onClose={() => setShowOrderModal(false)}
+          api={api}
+          fetchFoodCost={fetchFoodCost}
         />
       )}
     </Layout>
@@ -248,12 +250,12 @@ function CostRow({ label, value }) {
   );
 }
 
-/* ---------- ORDER RECIPE BREAKDOWN (same as Calculate) ---------- */
+/* ---------- ORDER RECIPE BREAKDOWN (read-only, for calculator page) ---------- */
 export function OrderRecipeBreakdown({ data, loading, multiplier = 1 }) {
   const [expanded, setExpanded] = useState({});
 
   const toggleExpand = (index) => {
-    setExpanded(prev => ({ ...prev, [index]: !prev[index] }));
+    setExpanded((prev) => ({ ...prev, [index]: !prev[index] }));
   };
 
   if (loading) {
@@ -266,7 +268,9 @@ export function OrderRecipeBreakdown({ data, loading, multiplier = 1 }) {
   if (!data) {
     return (
       <div className="mt-3 pt-3 border-t">
-        <p className="text-sm text-gray-500">Recipe not found or failed to load</p>
+        <p className="text-sm text-gray-500">
+          Recipe not found or failed to load
+        </p>
       </div>
     );
   }
@@ -283,7 +287,9 @@ export function OrderRecipeBreakdown({ data, loading, multiplier = 1 }) {
 
   return (
     <div className="mt-3 pt-3 border-t">
-      <h3 className="text-sm font-semibold text-gray-700 mb-2">Cost Breakdown</h3>
+      <h3 className="text-sm font-semibold text-gray-700 mb-2">
+        Cost Breakdown
+      </h3>
       <div className="bg-white rounded border overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-100">
@@ -349,8 +355,131 @@ export function OrderRecipeBreakdown({ data, loading, multiplier = 1 }) {
   );
 }
 
+/* ---------- EDITABLE BREAKDOWN FOR ORDER MODAL ---------- */
+function EditableBreakdown({ data, onBaseTotalChange }) {
+  const [rows, setRows] = useState([]);
+  const [expanded, setExpanded] = useState({});
+const toggleExpand = (index) =>
+  setExpanded(prev => ({ ...prev, [index]: !prev[index] }));
+
+  useEffect(() => {
+    if (!data?.breakdown) return;
+    setRows(data.breakdown.map(r => ({ ...r })));
+  }, [data]);
+
+  // 🔥 SAFE — runs AFTER render
+  useEffect(() => {
+    if (!rows.length) return;
+
+    const baseTotal = rows.reduce((s, r) => s + (Number(r.cost) || 0), 0);
+
+    // queue microtask (prevents render-phase update)
+    Promise.resolve().then(() => {
+      onBaseTotalChange?.(rows, baseTotal);
+    });
+
+  }, [rows]);
+
+  const changeQty = (i, newQty) => {
+    setRows(prev => {
+      const copy = [...prev];
+
+      const originalQty = Number(data.breakdown[i].qty) || 1;
+      const originalCost = Number(data.breakdown[i].cost) || 0;
+
+      const unitCost = originalCost / originalQty;
+
+      copy[i].qty = newQty;
+      copy[i].cost = unitCost * newQty;
+
+      return copy;
+    });
+  };
+
+  if (!rows.length) return null;
+
+
+
+  if (!data) return null;
+  if (!rows.length) return null;
+
+  return (
+    <div className="mt-3 pt-3 border-t">
+      <h3 className="text-sm font-semibold text-gray-700 mb-2">
+        Recipe (editable quantities)
+      </h3>
+      <div className="bg-white rounded border overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="p-2 text-left">Item</th>
+              <th className="p-2 text-center">Type</th>
+              <th className="p-2 text-center">Qty</th>
+              <th className="p-2 text-right">Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, index) => {
+              const isSub = row.type === "SUBRECIPE";
+              let parentIndex = null;
+              if (row.level > 0) {
+                for (let j = index - 1; j >= 0; j--) {
+                  if (rows[j].type === "SUBRECIPE") {
+                    parentIndex = j;
+                    break;
+                  }
+                }
+                if (parentIndex !== null && !expanded[parentIndex]) {
+                  return null;
+                }
+              }
+
+              return (
+                <tr key={index} className="border-t">
+                  <td className="p-2">
+                    <div
+                      className={`flex items-center gap-2 ${
+                        row.level > 0 ? "pl-6 text-gray-600" : ""
+                      }`}
+                    >
+                      {isSub && (
+                        <button
+                          onClick={() => toggleExpand(index)}
+                          className="text-xs font-bold w-4"
+                        >
+                          {expanded[index] ? "▼" : "▶"}
+                        </button>
+                      )}
+                      {row.item}
+                    </div>
+                  </td>
+                  <td className="p-2 text-center">{row.type}</td>
+                  <td className="p-2 text-center">
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      className="w-20 border rounded px-1 py-0.5 text-right"
+                      value={row.qty ?? ""}
+                      onChange={(e) =>
+                        changeQty(index, Number(e.target.value))
+                      }
+                    />{" "}
+                    {row.uom}
+                  </td>
+                  <td className="p-2 text-right">₹{row.cost}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- ORDER MODAL ---------- */
-function OrderModal({ dishes, orderItems, setOrderItems, onClose }) {
+function OrderModal({ dishes, orderItems, setOrderItems, onClose, api, fetchFoodCost }) {
   const [breakdownData, setBreakdownData] = useState({});
   const [loadingBreakdown, setLoadingBreakdown] = useState({});
   const subtotal = orderItems.reduce((sum, i) => sum + i.total, 0);
@@ -363,9 +492,10 @@ function OrderModal({ dishes, orderItems, setOrderItems, onClose }) {
       if (value) {
         setLoadingBreakdown(prev => ({ ...prev, [index]: true }));
         try {
-          const res = await fetchFoodCost(value, 5);
-          updated[index].price = res.total;
-          updated[index].total = res.total * updated[index].qty;
+          const res = await fetchFoodCost(value);
+          const basePrice = Number(res.total) || 0;
+          updated[index].price = basePrice;
+          updated[index].total = basePrice * updated[index].qty;
           setBreakdownData(prev => ({ ...prev, [index]: res }));
         } catch (err) {
           setBreakdownData(prev => ({ ...prev, [index]: null }));
@@ -386,7 +516,7 @@ function OrderModal({ dishes, orderItems, setOrderItems, onClose }) {
     }
 
     if (field === "qty") {
-      updated[index].total = updated[index].price * value;
+      updated[index].total = (Number(updated[index].price) || 0) * (Number(value) || 0);
     }
 
     setOrderItems(updated);
@@ -439,9 +569,28 @@ function OrderModal({ dishes, orderItems, setOrderItems, onClose }) {
 
                   {/* COST BREAKDOWN - same as Calculate */}
                   {item.dish && (
-                    <OrderRecipeBreakdown
+                    <EditableBreakdown
                       data={data}
-                      loading={isLoading}
+                      multiplier={item.qty}
+                      onBaseTotalChange={(rows) => {
+                        setTimeout(() => {
+                        setOrderItems(prev => {
+                          const copy = [...prev];
+                          const newBase = rows.reduce((s,r)=>s+(Number(r.cost)||0),0);
+                          copy[i].price = newBase;
+                          copy[i].total = newBase * copy[i].qty;
+                          copy[i].breakdown = rows.map(r => ({
+                            item: r.item,
+                            type: r.type,
+                            qty: Number(r.qty || 0) * Number(copy[i].qty || 0),
+                            cost: Number(r.cost || 0) * Number(copy[i].qty || 0),
+                            uom: r.uom,
+                            level: Number(r.level || 0)
+                          }));
+                          return copy;
+                        });
+                      },0);
+                      }}
                     />
                   )}
                 </div>
@@ -466,7 +615,13 @@ function OrderModal({ dishes, orderItems, setOrderItems, onClose }) {
                     try {
                     const res = await api.post("/api/wallet/pay", {
                         amount: subtotal,
-                        items: orderItems
+                        items: orderItems.map((i, index) => ({
+                          dish: i.dish,
+                          qty: Number(i.qty),
+                          price: Number(i.price),
+                          total: Number(i.total),
+                          breakdown: i.breakdown || []
+                        }))
                     });
 
                     alert(
