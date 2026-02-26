@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
 import api from "../utils/api";
 
-const MEETING_COST = 50;
+const MEETING_COST = 60;
 
 function storageAvailable() {
   try {
