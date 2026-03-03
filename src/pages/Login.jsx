@@ -36,11 +36,17 @@ const Login = () => {
       })
 
       // save token + profile
-     // 🔐 SAVE TOKEN ALWAYS
       authUtils.setAuth(data.token);
 
       // 🔑 SAVE USER TYPE (client / vendor / admin)
       localStorage.setItem("userType", data.userType);
+
+      // 🔑 SAVE ADMIN ROLE (for role-based dashboard), if present
+      if (data.userType === "admin" && data.role) {
+        localStorage.setItem("adminRole", data.role);
+      } else {
+        localStorage.removeItem("adminRole");
+      }
 
       // ✅ ONLY save user object if it exists (NOT for admin)
       if (data.user || data.vendor) {

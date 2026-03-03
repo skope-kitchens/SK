@@ -7,10 +7,16 @@ import api from "../utils/api";
 
 const AdminDashboard = () => {
   const [selectedBrand, setSelectedBrand] = useState(null);
-  const [refreshKey, setRefreshKey] = useState(0); // 👈 IMPORTANT
+  const [refreshKey, setRefreshKey] = useState(0);
   const [showRecipesModal, setShowRecipesModal] = useState(false);
   const [showIngredientsModal, setShowIngredientsModal] = useState(false);
+  const [showInventoryModal, setShowInventoryModal] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const navigate = useNavigate();
+
+  const adminRole = typeof window !== "undefined"
+    ? localStorage.getItem("adminRole")
+    : null;
 
   const handleLogout = () => {
     sessionStorage.clear();
@@ -18,31 +24,88 @@ const AdminDashboard = () => {
     navigate("/");
   };
 
+  const isWalletManager = adminRole === "WALLET_MANAGER";
+  const isOrderManager = adminRole === "ORDER_MANAGER";
+  const isRecipeManager = adminRole === "RECIPE_MANAGER";
+  const isIngredientManager = adminRole === "INGREDIENT_MANAGER";
+
+  const hasMenuOptions = isRecipeManager || isIngredientManager;
+  const canManageBrand = isWalletManager || isOrderManager;
+
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-6 py-8 relative">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>
 
-          <div className="flex gap-4">
-            <button
-              onClick={() => navigate("/add-recipe")}
-              className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition"
-            >
-              Add Recipe
-            </button>
-            <button
-              onClick={() => setShowRecipesModal(true)}
-              className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition"
-            >
-              Update Recipe
-            </button>
-            <button
-              onClick={() => setShowIngredientsModal(true)}
-              className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition"
-            >
-              Update Ingredients
-            </button>
+          <div className="flex items-center gap-3 relative">
+            {/* Role-based menu icon */}
+            {hasMenuOptions && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowMenu((prev) => !prev)}
+                  className="bg-black text-white px-3 py-2 rounded-lg hover:bg-gray-800 transition flex items-center justify-center text-lg"
+                  aria-haspopup="menu"
+                  aria-expanded={showMenu}
+                >
+                  ≡
+                </button>
+                {showMenu && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20">
+                    {isRecipeManager && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowMenu(false);
+                            navigate("/add-recipe");
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                        >
+                          Add Recipe
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowMenu(false);
+                            setShowRecipesModal(true);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                        >
+                          Update Recipe
+                        </button>
+                      </>
+                    )}
+                    {isIngredientManager && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowMenu(false);
+                          setShowIngredientsModal(true);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                      >
+                        Update Ingredients
+                      </button>
+                    )}
+                    {isIngredientManager && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowMenu(false);
+                          setShowInventoryModal(true);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                      >
+                        Inventory
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <button
               onClick={handleLogout}
               className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition"
@@ -52,32 +115,184 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* 👇 key forces BrandList to refetch */}
+        {/* Brand list visible to all admin roles; drawer only for wallet/order managers */}
         <BrandList
           key={refreshKey}
-          onSelectBrand={setSelectedBrand}
+          onSelectBrand={canManageBrand ? setSelectedBrand : undefined}
+          canManage={canManageBrand}
         />
 
-        {selectedBrand && (
+        {canManageBrand && selectedBrand && (
           <BrandDrawer
             brand={selectedBrand}
+            adminRole={adminRole}
             onClose={() => {
               setSelectedBrand(null);
-              setRefreshKey((k) => k + 1); // 🔁 REFRESH BRANDS
+              setRefreshKey((k) => k + 1);
             }}
           />
         )}
 
-        {showRecipesModal && (
+        {/* Recipe update modal only for recipe managers */}
+        {isRecipeManager && showRecipesModal && (
           <RecipesModal onClose={() => setShowRecipesModal(false)} />
         )}
-        {showIngredientsModal && (
+
+        {/* Ingredient update modal only for ingredient managers */}
+        {isIngredientManager && showIngredientsModal && (
           <IngredientsModal onClose={() => setShowIngredientsModal(false)} />
+        )}
+
+        {/* Inventory modal only for ingredient managers */}
+        {isIngredientManager && showInventoryModal && (
+          <InventoryModal onClose={() => setShowInventoryModal(false)} />
         )}
       </div>
     </Layout>
   );
 };
+
+/* ---------- INVENTORY MODAL ---------- */
+function InventoryModal({ onClose }) {
+  const [branchCode, setBranchCode] = useState("AMSJ");
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const fetchInventory = async (code) => {
+    if (!code) return;
+    setLoading(true);
+    setError("");
+    try {
+      const res = await api.get("/api/inventory/items", {
+        params: { branchCode: code },
+      });
+      setItems(res.data?.data || []);
+    } catch (err) {
+      setError(
+        err.response?.data?.message || "Failed to fetch inventory items"
+      );
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchInventory(branchCode);
+  }, []);
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl w-[95vw] max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="flex justify-between items-center p-6 border-b">
+          <h2 className="text-2xl font-bold">Inventory</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-black text-2xl"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="p-6 border-b flex flex-wrap items-end gap-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Branch Code
+            </label>
+            <input
+              type="text"
+              value={branchCode}
+              onChange={(e) => setBranchCode(e.target.value.toUpperCase())}
+              className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+              placeholder="e.g. AMSJ"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => fetchInventory(branchCode)}
+            disabled={loading}
+            className="inline-flex items-center px-4 py-2 rounded-lg bg-black text-white text-sm hover:bg-gray-800 disabled:opacity-50"
+          >
+            {loading ? "Loading..." : "Refresh"}
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-auto p-6">
+          {error && (
+            <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              {error}
+            </div>
+          )}
+
+          <div className="border rounded-xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="px-3 py-2 text-left">SKU</th>
+                    <th className="px-3 py-2 text-left">Name</th>
+                    <th className="px-3 py-2 text-left">Category</th>
+                    <th className="px-3 py-2 text-left">Unit</th>
+                    <th className="px-3 py-2 text-right">Qty</th>
+                    <th className="px-3 py-2 text-right">Avg Cost</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading && (
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className="px-3 py-4 text-center text-gray-500"
+                      >
+                        Loading inventory...
+                      </td>
+                    </tr>
+                  )}
+                  {!loading && items.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className="px-3 py-4 text-center text-gray-500"
+                      >
+                        No items found.
+                      </td>
+                    </tr>
+                  )}
+                  {!loading &&
+                    items.map((item) => (
+                      <tr key={item.skuCode} className="border-t">
+                        <td className="px-3 py-2">{item.skuCode}</td>
+                        <td className="px-3 py-2">{item.name}</td>
+                        <td className="px-3 py-2">{item.categoryName}</td>
+                        <td className="px-3 py-2">{item.measuringUnit}</td>
+                        <td className="px-3 py-2 text-right">
+                          {Number(item.itemQty || 0).toLocaleString("en-IN")}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          ₹{Number(item.averageCost || 0).toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 p-4 border-t">
+          <button
+            type="button"
+            className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+            onClick={onClose}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /* ---------- INGREDIENTS BULK UPDATE MODAL ---------- */
 function IngredientsModal({ onClose }) {

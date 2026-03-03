@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../utils/api";
 
-const BrandList = ({ onSelectBrand }) => {
+const BrandList = ({ onSelectBrand, canManage = true }) => {
   const [brands, setBrands] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -47,6 +47,7 @@ const BrandList = ({ onSelectBrand }) => {
         <div
           key={brand._id}
           onClick={() => {
+            if (!canManage || !onSelectBrand) return;
             onSelectBrand(brand);
 
             // 🔕 clear dot locally once admin opens brand
@@ -58,7 +59,9 @@ const BrandList = ({ onSelectBrand }) => {
               )
             );
           }}
-          className="p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50"
+          className={`p-4 flex justify-between items-center ${
+            canManage ? "cursor-pointer hover:bg-gray-50" : ""
+          }`}
         >
           {/* LEFT: NAME + DOT + WALLET */}
           <div>
@@ -79,9 +82,11 @@ const BrandList = ({ onSelectBrand }) => {
           </div>
 
           {/* RIGHT */}
-          <span className="text-sm text-blue-600">
-            Manage →
-          </span>
+          {canManage && (
+            <span className="text-sm text-blue-600">
+              Manage →
+            </span>
+          )}
         </div>
       ))}
     </div>

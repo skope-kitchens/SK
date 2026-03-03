@@ -5,17 +5,19 @@ import { OrderRecipeBreakdown } from "./OrderDish";
 import WalletPanel from "./WalletPanel";
 import ServiceChecklist from "./ServiceChecklist";
 
-const BrandDrawer = ({ brand, onClose }) => {
+const BrandDrawer = ({ brand, adminRole, onClose }) => {
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [dueAmount, setDueAmount] = useState("");
   const [dueReason, setDueReason] = useState("");
   const [showRecipesOrderId, setShowRecipesOrderId] = useState(null);
 
+  const isWalletManager = adminRole === "WALLET_MANAGER";
+  const isOrderManager = adminRole === "ORDER_MANAGER";
 
-  /* ================= FETCH ORDERS ================= */
+  /* ================= FETCH ORDERS (ORDER MANAGER ONLY) ================= */
   useEffect(() => {
-    if (!brand?._id) return;
+    if (!brand?._id || !isOrderManager) return;
 
     const fetchOrders = async () => {
       setLoadingOrders(true);
@@ -30,11 +32,10 @@ const BrandDrawer = ({ brand, onClose }) => {
     };
 
     fetchOrders();
-    
-    // Refresh orders every 5 seconds to get updates
+
     const interval = setInterval(fetchOrders, 5000);
     return () => clearInterval(interval);
-  }, [brand]);
+  }, [brand, isOrderManager]);
 
   /* ================= UPDATE ORDER STATUS ================= */
   const updateOrderStatus = async (orderId, status) => {
@@ -87,183 +88,191 @@ const BrandDrawer = ({ brand, onClose }) => {
           </button>
         </div>
 
-        {/* ================= WALLET ================= */}
-        <WalletPanel
-          brandId={brand._id}
-          balance={brand.wallet?.balance ?? 0}
-        />
+        {/* ================= WALLET + DUE (WALLET MANAGER ONLY) ================= */}
+        {isWalletManager && (
+          <>
+            <WalletPanel
+              brandId={brand._id}
+              balance={brand.wallet?.balance ?? 0}
+            />
 
-        <div className="mt-4 border rounded-lg p-4">
-  <h4 className="font-semibold mb-2">Add Due Amount</h4>
+            <div className="mt-4 border rounded-lg p-4">
+              <h4 className="font-semibold mb-2">Add Due Amount</h4>
 
-  <input
-    type="number"
-    placeholder="Amount"
-    className="w-full border rounded px-3 py-2 mb-2"
-    value={dueAmount}
-    onChange={(e) => setDueAmount(e.target.value)}
-  />
+              <input
+                type="number"
+                placeholder="Amount"
+                className="w-full border rounded px-3 py-2 mb-2"
+                value={dueAmount}
+                onChange={(e) => setDueAmount(e.target.value)}
+              />
 
-  <input
-    type="text"
-    placeholder="Reason (optional)"
-    className="w-full border rounded px-3 py-2 mb-2"
-    value={dueReason}
-    onChange={(e) => setDueReason(e.target.value)}
-  />
+              <input
+                type="text"
+                placeholder="Reason (optional)"
+                className="w-full border rounded px-3 py-2 mb-2"
+                value={dueReason}
+                onChange={(e) => setDueReason(e.target.value)}
+              />
 
-  <button
-    onClick={async () => {
-      await api.post("/api/wallet/admin/wallet/due", {
-        userId: brand._id,
-        amount: dueAmount,
-        reason: dueReason
-      });
+              <button
+                onClick={async () => {
+                  await api.post("/api/wallet/admin/wallet/due", {
+                    userId: brand._id,
+                    amount: dueAmount,
+                    reason: dueReason
+                  });
 
-      alert("Due added successfully");
-      setDueAmount("");
-      setDueReason("");
-    }}
-    className="bg-red-600 text-white px-4 py-2 rounded"
-  >
-    Add Due
-  </button>
-</div>
+                  alert("Due added successfully");
+                  setDueAmount("");
+                  setDueReason("");
+                }}
+                className="bg-red-600 text-white px-4 py-2 rounded"
+              >
+                Add Due
+              </button>
+            </div>
+          </>
+        )}
 
-        {/* ================= SERVICES ================= */}
-        <div className="mt-8">
-          <ServiceChecklist
-            brandId={brand._id}
-            editable
-          />
-        </div>
+        {/* ================= SERVICES (WALLET MANAGER ONLY) ================= */}
+        {isWalletManager && (
+          <div className="mt-8">
+            <ServiceChecklist
+              brandId={brand._id}
+              editable
+            />
+          </div>
+        )}
 
-        {/* ================= ORDERS ================= */}
-        <div className="mt-8">
-          <h3 className="text-lg font-semibold mb-4">
-            Orders
-          </h3>
+        {/* ================= ORDERS (ORDER MANAGER ONLY) ================= */}
+        {isOrderManager && (
+          <div className="mt-8">
+            <h3 className="text-lg font-semibold mb-4">
+              Orders
+            </h3>
 
-          {loadingOrders ? (
-            <p className="text-gray-500 text-sm">
-              Loading orders…
-            </p>
-          ) : orders.length === 0 ? (
-            <p className="text-gray-500 text-sm">
-              No orders placed yet
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {orders.map((order) => (
-                <div
-                  key={order._id}
-                  className="border rounded-lg p-4"
-                >
-                  {/* ORDER HEADER */}
-                  <div className="flex justify-between items-center mb-2">
-                    <div>
-                      <span className="font-semibold">
-                        ₹{order.amount}
-                      </span>
-                      {order.isReceived && (
-                        <span className="ml-2 text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">
-                          ✓ Received
+            {loadingOrders ? (
+              <p className="text-gray-500 text-sm">
+                Loading orders…
+              </p>
+            ) : orders.length === 0 ? (
+              <p className="text-gray-500 text-sm">
+                No orders placed yet
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {orders.map((order) => (
+                  <div
+                    key={order._id}
+                    className="border rounded-lg p-4"
+                  >
+                    {/* ORDER HEADER */}
+                    <div className="flex justify-between items-center mb-2">
+                      <div>
+                        <span className="font-semibold">
+                          ₹{order.amount}
                         </span>
-                      )}
+                        {order.isReceived && (
+                          <span className="ml-2 text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">
+                            ✓ Received
+                          </span>
+                        )}
+                      </div>
+
+                      <span
+                        className={`text-xs px-2 py-1 rounded ${
+                          order.status === "PLACED"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : order.status === "PREPARING"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-green-100 text-green-800"
+                        }`}
+                      >
+                        {order.status}
+                      </span>
                     </div>
 
-                    <span
-                      className={`text-xs px-2 py-1 rounded ${
-                        order.status === "PLACED"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : order.status === "PREPARING"
-                          ? "bg-blue-100 text-blue-800"
-                          : "bg-green-100 text-green-800"
-                      }`}
-                    >
-                      {order.status}
-                    </span>
-                  </div>
+                    {/* ITEMS */}
+                    <ul className="text-sm text-gray-600 mb-3">
+                      {order.items.map((item, idx) => (
+                        <li key={idx}>
+                          {item.qty} × {item.dish}
+                        </li>
+                      ))}
+                    </ul>
 
-                  {/* ITEMS */}
-                  <ul className="text-sm text-gray-600 mb-3">
-                    {order.items.map((item, idx) => (
-                      <li key={idx}>
-                        {item.qty} × {item.dish}
-                      </li>
-                    ))}
-                  </ul>
-
-                  {/* RECEIVED INFO */}
-                  {order.isReceived && order.receivedAt && (
-                    <p className="text-xs text-blue-600 mb-2">
-                      Received: {new Date(order.receivedAt).toLocaleString()}
-                    </p>
-                  )}
-
-                  {/* ACTIONS */}
-                  <div className="flex flex-wrap gap-3 items-center">
-                    <button
-                      type="button"
-                      onClick={() => setShowRecipesOrderId(order._id)}
-                      className="text-sm text-blue-600 hover:underline"
-                    >
-                      View recipes
-                    </button>
-
-                    {order.status === "PLACED" && (
-                      <button
-                        onClick={() =>
-                          updateOrderStatus(
-                            order._id,
-                            "PREPARING"
-                          )
-                        }
-                        className="text-sm text-blue-600 hover:underline"
-                      >
-                        Mark Preparing
-                      </button>
-                    )}
-
-                    {order.status === "PREPARING" && (
-                      <button
-                        onClick={() =>
-                          updateOrderStatus(
-                            order._id,
-                            "COMPLETED"
-                          )
-                        }
-                        className="text-sm text-green-600 hover:underline"
-                      >
-                        Mark Completed
-                      </button>
-                    )}
-
-                    {order.status === "COMPLETED" && !order.isReceived && (
-                      <p className="text-xs text-gray-500 italic">
-                        Waiting for client to mark as received
+                    {/* RECEIVED INFO */}
+                    {order.isReceived && order.receivedAt && (
+                      <p className="text-xs text-blue-600 mb-2">
+                        Received: {new Date(order.receivedAt).toLocaleString()}
                       </p>
                     )}
 
-                    {order.status === "COMPLETED" && (
+                    {/* ACTIONS */}
+                    <div className="flex flex-wrap gap-3 items-center">
                       <button
                         type="button"
-                        onClick={() => deleteOrder(order._id)}
-                        className="text-sm text-red-600 hover:underline"
+                        onClick={() => setShowRecipesOrderId(order._id)}
+                        className="text-sm text-blue-600 hover:underline"
                       >
-                        Delete order
+                        View recipes
                       </button>
-                    )}
+
+                      {order.status === "PLACED" && (
+                        <button
+                          onClick={() =>
+                            updateOrderStatus(
+                              order._id,
+                              "PREPARING"
+                            )
+                          }
+                          className="text-sm text-blue-600 hover:underline"
+                        >
+                          Mark Preparing
+                        </button>
+                      )}
+
+                      {order.status === "PREPARING" && (
+                        <button
+                          onClick={() =>
+                            updateOrderStatus(
+                              order._id,
+                              "COMPLETED"
+                            )
+                          }
+                          className="text-sm text-green-600 hover:underline"
+                        >
+                          Mark Completed
+                        </button>
+                      )}
+
+                      {order.status === "COMPLETED" && !order.isReceived && (
+                        <p className="text-xs text-gray-500 italic">
+                          Waiting for client to mark as received
+                        </p>
+                      )}
+
+                      {order.status === "COMPLETED" && (
+                        <button
+                          type="button"
+                          onClick={() => deleteOrder(order._id)}
+                          className="text-sm text-red-600 hover:underline"
+                        >
+                          Delete order
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* RECIPES MODAL (same as client Calculate / order breakdown) */}
-      {showRecipesOrderId && (() => {
+      {isOrderManager && showRecipesOrderId && (() => {
         const order = orders.find((o) => o._id === showRecipesOrderId);
         if (!order) return null;
         return (

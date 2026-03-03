@@ -31,13 +31,13 @@ api.interceptors.request.use((config) => {
 })
 /* ---------- INVENTORY (Ingredients source) ---------- */
 export const fetchInventoryItems = (branchCode) =>
-  api.get("/inventory/items", {
+  api.get("/api/inventory/items", {
     params: { branchCode },
   });
 
 /* ---------- INGREDIENTS (optional if stored separately) ---------- */
 export const fetchIngredients = () =>
-  api.get("/inventory/items");
+  api.get("/api/inventory/items");
 
 /* ---------- SUB RECIPES ---------- */
 export const fetchSubRecipes = () =>

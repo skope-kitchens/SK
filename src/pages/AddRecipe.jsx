@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../utils/api.js";
 import RecipeItem from "../components/RecipeItem.jsx";
 
@@ -23,21 +24,31 @@ export default function AddRecipe() {
   const [recipeName, setRecipeName] = useState("");
   const [items, setItems] = useState([EMPTY_NODE()]);
   const [subRecipes, setSubRecipes] = useState([]);
+  const navigate = useNavigate();
 
-useEffect(() => {
-  const loadSubRecipes = async () => {
-    try {
-      // Load all subrecipes from collection (no brand filtering)
-      const res = await api.get("/api/subrecipes");
-      setSubRecipes(Array.isArray(res.data) ? res.data : []);
-    } catch (e) {
-      console.error("Failed to load subrecipes", e);
-      setSubRecipes([]);
+  // Frontend guard: only RECIPE_MANAGER admins should access this page
+  useEffect(() => {
+    const userType = localStorage.getItem("userType");
+    const adminRole = localStorage.getItem("adminRole");
+    if (userType === "admin" && adminRole !== "RECIPE_MANAGER") {
+      navigate("/admin-dashboard");
     }
-  };
+  }, [navigate]);
 
-  loadSubRecipes();
-}, []);
+  useEffect(() => {
+    const loadSubRecipes = async () => {
+      try {
+        // Load all subrecipes from collection (no brand filtering)
+        const res = await api.get("/api/subrecipes");
+        setSubRecipes(Array.isArray(res.data) ? res.data : []);
+      } catch (e) {
+        console.error("Failed to load subrecipes", e);
+        setSubRecipes([]);
+      }
+    };
+
+    loadSubRecipes();
+  }, []);
 
 
 
