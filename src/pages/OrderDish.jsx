@@ -107,7 +107,7 @@ export default function OrderDish() {
                 onClick={() => setShowOrderModal(true)}
                 className="bg-black text-white px-6 py-2 rounded-lg"
               >
-                Make Order
+                Make Projection
               </button>
             </div>
           </div>
@@ -371,7 +371,10 @@ const toggleExpand = (index) =>
   useEffect(() => {
     if (!rows.length) return;
 
-    const baseTotal = rows.reduce((s, r) => s + (Number(r.cost) || 0), 0);
+    // Only count top-level rows; subrecipe children are display-only to avoid double counting
+    const baseTotal = rows
+      .filter((r) => Number(r.level || 0) === 0)
+      .reduce((s, r) => s + (Number(r.cost) || 0), 0);
 
     // queue microtask (prevents render-phase update)
     Promise.resolve().then(() => {
@@ -576,7 +579,9 @@ function OrderModal({ dishes, orderItems, setOrderItems, onClose, api, fetchFood
                         setTimeout(() => {
                         setOrderItems(prev => {
                           const copy = [...prev];
-                          const newBase = rows.reduce((s,r)=>s+(Number(r.cost)||0),0);
+                          const newBase = rows
+                            .filter((r) => Number(r.level || 0) === 0)
+                            .reduce((s, r) => s + (Number(r.cost) || 0), 0);
                           copy[i].price = newBase;
                           copy[i].total = newBase * copy[i].qty;
                           copy[i].breakdown = rows.map(r => ({
