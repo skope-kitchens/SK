@@ -9,8 +9,12 @@ const AdminDashboard = () => {
   const [selectedBrand, setSelectedBrand] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showRecipesModal, setShowRecipesModal] = useState(false);
+  const [showMapIngredientsModal, setShowMapIngredientsModal] = useState(false);
+  const [showGrnModal, setShowGrnModal] = useState(false);
+  const [showTrialTrainingModal, setShowTrialTrainingModal] = useState(false);
   const [showIngredientsModal, setShowIngredientsModal] = useState(false);
   const [showInventoryModal, setShowInventoryModal] = useState(false);
+  const [showIngredientInventoryModal, setShowIngredientInventoryModal] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const navigate = useNavigate();
 
@@ -25,12 +29,11 @@ const AdminDashboard = () => {
   };
 
   const isWalletManager = adminRole === "WALLET_MANAGER";
-  const isOrderManager = adminRole === "ORDER_MANAGER";
   const isRecipeManager = adminRole === "RECIPE_MANAGER";
   const isIngredientManager = adminRole === "INGREDIENT_MANAGER";
 
   const hasMenuOptions = isRecipeManager || isIngredientManager;
-  const canManageBrand = isWalletManager || isOrderManager;
+  const canManageBrand = isWalletManager || isRecipeManager;
 
   return (
     <Layout>
@@ -75,6 +78,57 @@ const AdminDashboard = () => {
                         >
                           Update Recipe
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowMenu(false);
+                            setShowMapIngredientsModal(true);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                        >
+                          Map Ingredients
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowMenu(false);
+                            navigate("/add-trial-recipe");
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                        >
+                          Add Trial Recipe
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowMenu(false);
+                            navigate("/add-training-recipe");
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                        >
+                          Add Training Recipe
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowMenu(false);
+                            setShowTrialTrainingModal(true);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                        >
+                          View Trial & Training
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowMenu(false);
+                            setShowGrnModal(true);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                        >
+                          GRN
+                        </button>
+                        
                       </>
                     )}
                     {isIngredientManager && (
@@ -94,11 +148,23 @@ const AdminDashboard = () => {
                         type="button"
                         onClick={() => {
                           setShowMenu(false);
-                          setShowInventoryModal(true);
+                          setShowIngredientInventoryModal(true);
                         }}
                         className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
                       >
                         Inventory
+                      </button>
+                    )}
+                    {isIngredientManager && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowMenu(false);
+                          setShowInventoryModal(true);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                      >
+                        Stock (Rista)
                       </button>
                     )}
                   </div>
@@ -138,6 +204,11 @@ const AdminDashboard = () => {
           <RecipesModal onClose={() => setShowRecipesModal(false)} />
         )}
 
+        {/* Map Ingredients modal only for recipe managers */}
+        {isRecipeManager && showMapIngredientsModal && (
+          <MapIngredientsModal onClose={() => setShowMapIngredientsModal(false)} />
+        )}
+
         {/* Ingredient update modal only for ingredient managers */}
         {isIngredientManager && showIngredientsModal && (
           <IngredientsModal onClose={() => setShowIngredientsModal(false)} />
@@ -146,6 +217,25 @@ const AdminDashboard = () => {
         {/* Inventory modal only for ingredient managers */}
         {isIngredientManager && showInventoryModal && (
           <InventoryModal onClose={() => setShowInventoryModal(false)} />
+        )}
+
+        {/* Ingredient inventory (Indent/Issue) */}
+        {isIngredientManager && showIngredientInventoryModal && (
+          <IngredientInventoryModal
+            onClose={() => setShowIngredientInventoryModal(false)}
+          />
+        )}
+
+        {/* GRN modal for recipe manager */}
+        {isRecipeManager && showGrnModal && (
+          <GrnModal onClose={() => setShowGrnModal(false)} />
+        )}
+
+        {/* Trial & Training list modal */}
+        {isRecipeManager && showTrialTrainingModal && (
+          <TrialTrainingModal
+            onClose={() => setShowTrialTrainingModal(false)}
+          />
         )}
       </div>
     </Layout>
@@ -767,6 +857,845 @@ function UpdateRecipeItemsTable({ items, onUpdate, onRemove, isSubRecipe }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+/* ---------- MAP INGREDIENTS MODAL ---------- */
+const MAP_TAB_MAIN = "main";
+const MAP_TAB_SUB = "sub";
+
+function MapIngredientsModal({ onClose }) {
+  const [tab, setTab] = useState(MAP_TAB_MAIN);
+  const [mainList, setMainList] = useState([]);
+  const [subList, setSubList] = useState([]);
+  const [loadingList, setLoadingList] = useState(true);
+  const [selectedRecipe, setSelectedRecipe] = useState(null);
+
+  const [stores, setStores] = useState([]);
+  const [branchCode, setBranchCode] = useState("");
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const [loadingInventory, setLoadingInventory] = useState(false);
+
+  const emptyRow = () => ({
+    skuCode: "",
+    itemName: "",
+    categoryName: "",
+    uom: "",
+    qty: "",
+    cost: "",
+  });
+
+  const [rows, setRows] = useState([emptyRow()]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const fetchLists = async () => {
+      setLoadingList(true);
+      try {
+        const [mainRes, subRes] = await Promise.all([
+          api.get("/api/admin/recipes"),
+          api.get("/api/admin/subrecipes"),
+        ]);
+        setMainList(mainRes.data || []);
+        setSubList(subRes.data || []);
+      } catch (err) {
+        console.error("Failed to load recipe lists", err);
+      } finally {
+        setLoadingList(false);
+      }
+    };
+    fetchLists();
+  }, []);
+
+  useEffect(() => {
+    const loadStores = async () => {
+      try {
+        const res = await api.get("/api/rista/stores");
+        setStores(res.data?.stores || []);
+      } catch (err) {
+        console.error("Failed to load Rista stores", err);
+        setStores([]);
+      }
+    };
+    loadStores();
+  }, []);
+
+  useEffect(() => {
+    const fetchInventory = async () => {
+      if (!branchCode) {
+        setInventoryItems([]);
+        return;
+      }
+      setLoadingInventory(true);
+      try {
+        const res = await api.get("/api/inventory/items", {
+          params: { branchCode },
+        });
+        setInventoryItems(res.data?.data || []);
+      } catch (err) {
+        console.error("Failed to load inventory items", err);
+        setInventoryItems([]);
+      } finally {
+        setLoadingInventory(false);
+      }
+    };
+    fetchInventory();
+  }, [branchCode]);
+
+  const list = tab === MAP_TAB_MAIN ? mainList : subList;
+  const recipeKind = tab === MAP_TAB_MAIN ? "main" : "sub";
+
+  const updateRow = (index, patch) => {
+    setRows((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], ...patch };
+      return next;
+    });
+  };
+
+  const onSelectIngredient = (index, itemName) => {
+    const match = inventoryItems.find((it) => it.name === itemName);
+    updateRow(index, {
+      itemName,
+      skuCode: match?.skuCode || "",
+      categoryName: match?.categoryName || "",
+      uom: match?.measuringUnit || "",
+    });
+  };
+
+  const addIngredientRow = () => setRows((prev) => [...prev, emptyRow()]);
+
+  const handleSave = async () => {
+    if (!selectedRecipe?._id) return;
+    if (!branchCode) return;
+    const items = rows
+      .map((r) => ({
+        skuCode: r.skuCode,
+        itemName: r.itemName,
+        categoryName: r.categoryName,
+        uom: r.uom,
+        qty: Number(r.qty || 0),
+        cost: Number(r.cost || 0),
+      }))
+      .filter((r) => r.itemName);
+
+    setSaving(true);
+    try {
+      await api.post("/api/mapped-ingredients", {
+        recipeId: selectedRecipe._id,
+        recipeKind,
+        branchCode,
+        items,
+      });
+
+      // Send to Ingredient Admin (Indent)
+      await api.post("/api/ingredient-indent", {
+        recipeId: selectedRecipe._id,
+        recipeKind,
+        recipeName: selectedRecipe.recipeName,
+        branchCode,
+        items,
+      });
+      onClose();
+    } catch (err) {
+      console.error("Failed to save mapped ingredients", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl w-[95vw] max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="flex justify-between items-center p-6 border-b">
+          <h2 className="text-2xl font-bold">Map Ingredients</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-black text-2xl"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="flex border-b">
+          <button
+            onClick={() => { setTab(MAP_TAB_MAIN); setSelectedRecipe(null); }}
+            className={`px-6 py-3 font-medium ${tab === MAP_TAB_MAIN ? "border-b-2 border-black text-black" : "text-gray-500"}`}
+          >
+            Main Recipes
+          </button>
+          <button
+            onClick={() => { setTab(MAP_TAB_SUB); setSelectedRecipe(null); }}
+            className={`px-6 py-3 font-medium ${tab === MAP_TAB_SUB ? "border-b-2 border-black text-black" : "text-gray-500"}`}
+          >
+            Sub Recipes
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-hidden flex min-h-0">
+          <div className="w-72 border-r overflow-y-auto p-4">
+            {loadingList ? (
+              <p className="text-gray-500 text-sm">Loading...</p>
+            ) : list.length === 0 ? (
+              <p className="text-gray-500 text-sm">No recipes</p>
+            ) : (
+              <ul className="space-y-1">
+                {list.map((r) => (
+                  <li key={r._id}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedRecipe(r)}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-sm ${
+                        selectedRecipe?._id === r._id
+                          ? "bg-black text-white"
+                          : "hover:bg-gray-100"
+                      }`}
+                    >
+                      {r.recipeName}
+                      {r.brand && <span className="opacity-80 ml-1">({r.brand})</span>}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-6">
+            {!selectedRecipe ? (
+              <p className="text-gray-500">Select a recipe to map ingredients.</p>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Branch Code
+                    </label>
+                    <select
+                      value={branchCode}
+                      onChange={(e) => setBranchCode(e.target.value)}
+                      className="w-full border rounded-lg px-3 py-2 text-sm"
+                    >
+                      <option value="">Select branch</option>
+                      {stores.map((s) => (
+                        <option key={s.storeCode} value={s.storeCode}>
+                          {s.storeCode}{s.storeName ? ` — ${s.storeName}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="text-sm text-gray-500 flex items-end">
+                    {loadingInventory && branchCode ? "Loading inventory..." : ""}
+                  </div>
+                </div>
+
+                <div className="border rounded-lg overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="p-2 text-left">Ingredient</th>
+                        <th className="p-2 text-left">Category</th>
+                        <th className="p-2 text-left">UOM</th>
+                        <th className="p-2 text-right w-28">Qty</th>
+                        <th className="p-2 text-right w-28">Cost</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((r, idx) => (
+                        <tr key={idx} className="border-t">
+                          <td className="p-2">
+                            <select
+                              value={r.itemName}
+                              onChange={(e) => onSelectIngredient(idx, e.target.value)}
+                              className="w-full border rounded px-2 py-1 text-sm"
+                              disabled={!branchCode}
+                            >
+                              <option value="">
+                                {branchCode ? "Select ingredient" : "Select branch first"}
+                              </option>
+                              {inventoryItems.map((it) => (
+                                <option key={it.skuCode || it.name} value={it.name}>
+                                  {it.name}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="p-2">{r.categoryName || "—"}</td>
+                          <td className="p-2">{r.uom || "—"}</td>
+                          <td className="p-2 text-right">
+                            <input
+                              type="number"
+                              className="w-24 border rounded px-2 py-1 text-right text-sm"
+                              value={r.qty}
+                              onChange={(e) => updateRow(idx, { qty: e.target.value })}
+                            />
+                          </td>
+                          <td className="p-2 text-right">
+                            <input
+                              type="number"
+                              step="0.01"
+                              className="w-24 border rounded px-2 py-1 text-right text-sm"
+                              value={r.cost}
+                              onChange={(e) => updateRow(idx, { cost: e.target.value })}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="flex items-center justify-between mt-4">
+                  <button
+                    type="button"
+                    onClick={addIngredientRow}
+                    className="text-blue-600 text-sm font-medium hover:underline"
+                  >
+                    + Add Ingredient
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={saving || !branchCode}
+                    className="bg-black text-white px-4 py-2 rounded-lg text-sm disabled:opacity-50"
+                  >
+                    {saving ? "Saving..." : "Save Mapping"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- INGREDIENT INVENTORY MODAL (Indent/Issue) ---------- */
+function IngredientInventoryModal({ onClose }) {
+  const [tab, setTab] = useState("indent"); // indent | issue
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const fetchRows = async (activeTab) => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await api.get("/api/ingredient-indent", {
+        params:
+          activeTab === "issue"
+            ? { status: "ISSUED" }
+            : undefined,
+      });
+      let list = res.data?.data || [];
+      if (activeTab === "indent") {
+        list = list.filter((r) => r.status !== "ISSUED");
+      }
+      setRows(list);
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to load inventory");
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRows(tab);
+  }, [tab]);
+
+  const verify = async (id) => {
+    try {
+      await api.patch(`/api/ingredient-indent/${id}/verify`);
+      await fetchRows("indent");
+    } catch (err) {
+      alert(err.response?.data?.message || "Verify failed");
+    }
+  };
+
+  const issue = async (id) => {
+    try {
+      await api.patch(`/api/ingredient-indent/${id}/issue`);
+      await fetchRows("indent");
+    } catch (err) {
+      alert(err.response?.data?.message || "Issue failed");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl w-[95vw] max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="flex justify-between items-center p-6 border-b">
+          <h2 className="text-2xl font-bold">Inventory</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-black text-2xl"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="flex border-b">
+          <button
+            type="button"
+            onClick={() => setTab("indent")}
+            className={`px-6 py-3 font-medium ${
+              tab === "indent"
+                ? "border-b-2 border-black text-black"
+                : "text-gray-500"
+            }`}
+          >
+            Indent
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("issue")}
+            className={`px-6 py-3 font-medium ${
+              tab === "issue"
+                ? "border-b-2 border-black text-black"
+                : "text-gray-500"
+            }`}
+          >
+            Issue
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-auto p-6">
+          {error && (
+            <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              {error}
+            </div>
+          )}
+
+          <div className="border rounded-lg overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="p-2 text-left">Recipe</th>
+                  <th className="p-2 text-left">Ingredient</th>
+                  <th className="p-2 text-left">Category</th>
+                  <th className="p-2 text-left">UOM</th>
+                  <th className="p-2 text-right">Qty</th>
+                  <th className="p-2 text-right">Cost</th>
+                  <th className="p-2 text-center w-56">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={7} className="p-4 text-center text-gray-500">
+                      Loading...
+                    </td>
+                  </tr>
+                ) : rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="p-4 text-center text-gray-500">
+                      No records.
+                    </td>
+                  </tr>
+                ) : (
+                  rows.map((r) => (
+                    <tr key={r._id} className="border-t">
+                      <td className="p-2">
+                        <div className="font-medium">{r.recipeName || "—"}</div>
+                        <div className="text-xs text-gray-500">{r.branchCode}</div>
+                      </td>
+                      <td className="p-2">{r.itemName}</td>
+                      <td className="p-2">{r.categoryName || "—"}</td>
+                      <td className="p-2">{r.uom || "—"}</td>
+                      <td className="p-2 text-right">{Number(r.qty || 0)}</td>
+                      <td className="p-2 text-right">₹{Number(r.cost || 0).toFixed(2)}</td>
+                      <td className="p-2 text-center">
+                        {tab === "issue" ? (
+                          <span className="text-xs text-green-700 bg-green-50 border border-green-200 px-2 py-1 rounded">
+                            Issued
+                          </span>
+                        ) : r.status === "INDENT_PENDING" ? (
+                          <button
+                            type="button"
+                            onClick={() => verify(r._id)}
+                            className="bg-black text-white px-3 py-1.5 rounded text-xs hover:bg-gray-800"
+                          >
+                            Verify
+                          </button>
+                        ) : (
+                          <div className="flex items-center justify-center gap-2">
+                            <span className="text-xs text-blue-700 bg-blue-50 border border-blue-200 px-2 py-1 rounded">
+                              Verified
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => issue(r._id)}
+                              className="bg-green-600 text-white px-3 py-1.5 rounded text-xs hover:bg-green-700"
+                            >
+                              Issue
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 p-4 border-t">
+          <button
+            type="button"
+            className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+            onClick={onClose}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- GRN MODAL (Recipe admin view of issued items) ---------- */
+function GrnModal({ onClose }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const res = await api.get("/api/ingredient-indent", {
+          params: { status: "ISSUED" },
+        });
+        setRows(res.data?.data || []);
+      } catch (err) {
+        console.error("Failed to load GRN", err);
+        setRows([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl w-[95vw] max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="flex justify-between items-center p-6 border-b">
+          <h2 className="text-2xl font-bold">GRN</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-black text-2xl"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="flex-1 overflow-auto p-6">
+          <div className="border rounded-lg overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="p-2 text-left">Recipe</th>
+                  <th className="p-2 text-left">Ingredient</th>
+                  <th className="p-2 text-left">Category</th>
+                  <th className="p-2 text-left">UOM</th>
+                  <th className="p-2 text-right">Qty</th>
+                  <th className="p-2 text-right">Cost</th>
+                  <th className="p-2 text-left">Issued At</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={7} className="p-4 text-center text-gray-500">
+                      Loading...
+                    </td>
+                  </tr>
+                ) : rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="p-4 text-center text-gray-500">
+                      No issued ingredients.
+                    </td>
+                  </tr>
+                ) : (
+                  rows.map((r) => (
+                    <tr key={r._id} className="border-t">
+                      <td className="p-2">
+                        <div className="font-medium">{r.recipeName || "—"}</div>
+                        <div className="text-xs text-gray-500">{r.branchCode}</div>
+                      </td>
+                      <td className="p-2">{r.itemName}</td>
+                      <td className="p-2">{r.categoryName || "—"}</td>
+                      <td className="p-2">{r.uom || "—"}</td>
+                      <td className="p-2 text-right">{Number(r.qty || 0)}</td>
+                      <td className="p-2 text-right">₹{Number(r.cost || 0).toFixed(2)}</td>
+                      <td className="p-2 text-left">
+                        {r.issuedAt ? new Date(r.issuedAt).toLocaleString() : "—"}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 p-4 border-t">
+          <button
+            type="button"
+            className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+            onClick={onClose}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- TRIAL & TRAINING RECIPES MODAL ---------- */
+function TrialTrainingModal({ onClose }) {
+  const TAB_TRIAL = "TRIAL";
+  const TAB_TRAINING = "TRAINING";
+
+  const [tab, setTab] = useState(TAB_TRIAL);
+  const [trialList, setTrialList] = useState([]);
+  const [trainingList, setTrainingList] = useState([]);
+  const [loadingList, setLoadingList] = useState(true);
+  const [selectedRecipe, setSelectedRecipe] = useState(null);
+  const [items, setItems] = useState([]);
+  const [loadingRecipe, setLoadingRecipe] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const loadLists = async () => {
+      setLoadingList(true);
+      try {
+        const [trialRes, trainingRes] = await Promise.all([
+          api.get("/api/trial-recipes"),
+          api.get("/api/training-recipes"),
+        ]);
+        setTrialList(trialRes.data?.data || []);
+        setTrainingList(trainingRes.data?.data || []);
+      } catch (err) {
+        console.error("Failed to load trial/training lists", err);
+        setTrialList([]);
+        setTrainingList([]);
+      } finally {
+        setLoadingList(false);
+      }
+    };
+    loadLists();
+  }, []);
+
+  const loadTrialRecipe = async (id) => {
+    setSelectedRecipe(null);
+    setItems([]);
+    setLoadingRecipe(true);
+    try {
+      const res = await api.get(`/api/trial-recipes/${id}`);
+      const doc = res.data?.data || res.data;
+      setSelectedRecipe({
+        _id: doc._id,
+        recipeName: doc.recipeName,
+        brand: doc.brand,
+        kind: TAB_TRIAL,
+      });
+      setItems(Array.isArray(doc.items) ? doc.items.map((i) => ({ ...i })) : []);
+    } catch (err) {
+      console.error("Failed to load trial recipe", err);
+    } finally {
+      setLoadingRecipe(false);
+    }
+  };
+
+  const loadTrainingRecipe = async (id) => {
+    setSelectedRecipe(null);
+    setItems([]);
+    setLoadingRecipe(true);
+    try {
+      const res = await api.get(`/api/training-recipes/${id}`);
+      const doc = res.data?.data || res.data;
+      setSelectedRecipe({
+        _id: doc._id,
+        recipeName: doc.recipeName,
+        brand: doc.brand,
+        kind: TAB_TRAINING,
+      });
+      setItems(Array.isArray(doc.items) ? doc.items.map((i) => ({ ...i })) : []);
+    } catch (err) {
+      console.error("Failed to load training recipe", err);
+    } finally {
+      setLoadingRecipe(false);
+    }
+  };
+
+  const updateItem = (index, field, value) => {
+    setItems((prev) => {
+      const next = [...prev];
+      if (!next[index]) return prev;
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
+
+  const addItem = () => {
+    setItems((prev) => [
+      ...prev,
+      {
+        type: "INGREDIENT",
+        category: "Food",
+        refId: "",
+        quantity: 0,
+        uom: "GM",
+        netPrice: 0,
+      },
+    ]);
+  };
+
+  const removeItem = (index) => {
+    setItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSave = async () => {
+    if (!selectedRecipe) return;
+    setSaving(true);
+    try {
+      const payload = { items };
+      if (selectedRecipe.kind === TAB_TRIAL) {
+        await api.put(`/api/trial-recipes/${selectedRecipe._id}`, payload);
+      } else {
+        await api.put(`/api/training-recipes/${selectedRecipe._id}`, payload);
+      }
+      setSelectedRecipe(null);
+      setItems([]);
+    } catch (err) {
+      console.error("Failed to save trial/training recipe", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const list = tab === TAB_TRIAL ? trialList : trainingList;
+  const onSelect = tab === TAB_TRIAL ? loadTrialRecipe : loadTrainingRecipe;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl w-[90vw] max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="flex justify-between items-center p-6 border-b">
+          <h2 className="text-2xl font-bold">Trial & Training Recipes</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-black text-2xl"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="flex border-b">
+          <button
+            onClick={() => {
+              setTab(TAB_TRIAL);
+              setSelectedRecipe(null);
+              setItems([]);
+            }}
+            className={`px-6 py-3 font-medium ${
+              tab === TAB_TRIAL
+                ? "border-b-2 border-black text-black"
+                : "text-gray-500"
+            }`}
+          >
+            Trial Recipes
+          </button>
+          <button
+            onClick={() => {
+              setTab(TAB_TRAINING);
+              setSelectedRecipe(null);
+              setItems([]);
+            }}
+            className={`px-6 py-3 font-medium ${
+              tab === TAB_TRAINING
+                ? "border-b-2 border-black text-black"
+                : "text-gray-500"
+            }`}
+          >
+            Training Recipes
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-hidden flex min-h-0">
+          <div className="w-72 border-r overflow-y-auto p-4">
+            {loadingList ? (
+              <p className="text-gray-500 text-sm">Loading...</p>
+            ) : list.length === 0 ? (
+              <p className="text-gray-500 text-sm">No recipes</p>
+            ) : (
+              <ul className="space-y-1">
+                {list.map((r) => (
+                  <li key={r._id}>
+                    <button
+                      onClick={() => onSelect(r._id)}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-sm ${
+                        selectedRecipe?._id === r._id
+                          ? "bg-black text-white"
+                          : "hover:bg-gray-100"
+                      }`}
+                    >
+                      {r.recipeName}
+                      {r.brand && (
+                        <span className="opacity-80 ml-1">({r.brand})</span>
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-6">
+            {loadingRecipe ? (
+              <p className="text-gray-500">Loading recipe...</p>
+            ) : selectedRecipe ? (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">
+                    {selectedRecipe.recipeName}
+                    {selectedRecipe.brand && (
+                      <span className="text-gray-500 font-normal ml-2">
+                        ({selectedRecipe.brand})
+                      </span>
+                    )}
+                  </h3>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={addItem}
+                      className="bg-gray-200 hover:bg-gray-300 px-3 py-1.5 rounded text-sm"
+                    >
+                      Add ingredient
+                    </button>
+                    <button
+                      onClick={handleSave}
+                      disabled={saving}
+                      className="bg-black text-white px-4 py-1.5 rounded text-sm disabled:opacity-50"
+                    >
+                      {saving ? "Saving..." : "Save"}
+                    </button>
+                  </div>
+                </div>
+                <UpdateRecipeItemsTable
+                  items={items}
+                  onUpdate={updateItem}
+                  onRemove={removeItem}
+                  isSubRecipe={false}
+                />
+              </>
+            ) : (
+              <p className="text-gray-500">Select a recipe to edit.</p>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

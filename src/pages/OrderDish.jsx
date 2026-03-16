@@ -355,76 +355,40 @@ export function OrderRecipeBreakdown({ data, loading, multiplier = 1 }) {
   );
 }
 
-/* ---------- EDITABLE BREAKDOWN FOR ORDER MODAL ---------- */
-function EditableBreakdown({ data, onBaseTotalChange }) {
-  const [rows, setRows] = useState([]);
+function ProcurementBreakdown({ rows }) {
   const [expanded, setExpanded] = useState({});
-const toggleExpand = (index) =>
-  setExpanded(prev => ({ ...prev, [index]: !prev[index] }));
 
-  useEffect(() => {
-    if (!data?.breakdown) return;
-    setRows(data.breakdown.map(r => ({ ...r })));
-  }, [data]);
-
-  // 🔥 SAFE — runs AFTER render
-  useEffect(() => {
-    if (!rows.length) return;
-
-    // Only count top-level rows; subrecipe children are display-only to avoid double counting
-    const baseTotal = rows
-      .filter((r) => Number(r.level || 0) === 0)
-      .reduce((s, r) => s + (Number(r.cost) || 0), 0);
-
-    // queue microtask (prevents render-phase update)
-    Promise.resolve().then(() => {
-      onBaseTotalChange?.(rows, baseTotal);
-    });
-
-  }, [rows]);
-
-  const changeQty = (i, newQty) => {
-    setRows(prev => {
-      const copy = [...prev];
-
-      const originalQty = Number(data.breakdown[i].qty) || 1;
-      const originalCost = Number(data.breakdown[i].cost) || 0;
-
-      const unitCost = originalCost / originalQty;
-
-      copy[i].qty = newQty;
-      copy[i].cost = unitCost * newQty;
-
-      return copy;
-    });
+  const toggleExpand = (index) => {
+    setExpanded(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
   };
-
-  if (!rows.length) return null;
-
-
-
-  if (!data) return null;
-  if (!rows.length) return null;
+  if (!rows || !rows.length) return null;
 
   return (
     <div className="mt-3 pt-3 border-t">
       <h3 className="text-sm font-semibold text-gray-700 mb-2">
-        Recipe (editable quantities)
+        Procurement Plan
       </h3>
       <div className="bg-white rounded border overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-100">
             <tr>
               <th className="p-2 text-left">Item</th>
-              <th className="p-2 text-center">Type</th>
-              <th className="p-2 text-center">Qty</th>
-              <th className="p-2 text-right">Cost</th>
+              <th className="p-2 text-center">Required</th>
+              <th className="p-2 text-center">Inventory</th>
+              <th className="p-2 text-center">Min Pack Qty</th>
+              <th className="p-2 text-center">Min Pack Cost</th>
+              <th className="p-2 text-center">Procure Qty</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row, index) => {
               const isSub = row.type === "SUBRECIPE";
+
               let parentIndex = null;
+
               if (row.level > 0) {
                 for (let j = index - 1; j >= 0; j--) {
                   if (rows[j].type === "SUBRECIPE") {
@@ -432,6 +396,7 @@ const toggleExpand = (index) =>
                     break;
                   }
                 }
+
                 if (parentIndex !== null && !expanded[parentIndex]) {
                   return null;
                 }
@@ -453,24 +418,29 @@ const toggleExpand = (index) =>
                           {expanded[index] ? "▼" : "▶"}
                         </button>
                       )}
-                      {row.item}
+                      {row.itemName}
                     </div>
                   </td>
-                  <td className="p-2 text-center">{row.type}</td>
+
                   <td className="p-2 text-center">
-                    <input
-                      type="number"
-                      min="0"
-                      step="any"
-                      className="w-20 border rounded px-1 py-0.5 text-right"
-                      value={row.qty ?? ""}
-                      onChange={(e) =>
-                        changeQty(index, Number(e.target.value))
-                      }
-                    />{" "}
-                    {row.uom}
+                    {row.requiredQty} {row.uom}
                   </td>
-                  <td className="p-2 text-right">₹{row.cost}</td>
+
+                  <td className="p-2 text-center">
+                    {row.inventoryQty} {row.uom}
+                  </td>
+
+                  <td className="p-2 text-center">
+                    {row.minPackQty ?? "—"} {row.uom}
+                  </td>
+
+                  <td className="p-2 text-center">
+                    {row.minPackCost != null ? `₹${row.minPackCost}` : "—"}
+                  </td>
+
+                  <td className="p-2 text-center">
+                    {row.procureQty} {row.uom}
+                  </td>
                 </tr>
               );
             })}
@@ -485,7 +455,182 @@ const toggleExpand = (index) =>
 function OrderModal({ dishes, orderItems, setOrderItems, onClose, api, fetchFoodCost }) {
   const [breakdownData, setBreakdownData] = useState({});
   const [loadingBreakdown, setLoadingBreakdown] = useState({});
+  const [baseInventory, setBaseInventory] = useState(null);
+  const [procurementByItem, setProcurementByItem] = useState({});
+  const [minPackageMap, setMinPackageMap] = useState({});
   const subtotal = orderItems.reduce((sum, i) => sum + i.total, 0);
+
+  // Load client inventory once
+  useEffect(() => {
+    let clientId = null;
+    try {
+      const stored =
+        JSON.parse(sessionStorage.getItem("skope_user")) ||
+        JSON.parse(localStorage.getItem("skope_user"));
+      clientId = stored?.id || null;
+    } catch {
+      clientId = null;
+    }
+    if (!clientId) return;
+
+    const loadInventory = async () => {
+      try {
+        const res = await api.get(`/api/inventory/${clientId}`);
+        const items = res.data?.items || [];
+        const map = {};
+        items.forEach((it) => {
+          const key = String(it.itemName || "").trim().toLowerCase();
+          if (!key) return;
+          map[key] = {
+            availableQty: Number(it.availableQty || 0),
+            minPackQty: Number(it.minPackQty || 0),
+            minPackCost: Number(it.minPackCost || 0),
+            netPrice: Number(it.netPrice || 0),
+            uom: it.uom || "",
+          };
+        });
+        setBaseInventory(map);
+      } catch (err) {
+        console.error("Failed to load client inventory for projection", err);
+      }
+    };
+
+    loadInventory();
+  }, [api]);
+
+  // Lookup min pack qty/cost for ALL ingredients (includes subrecipe children)
+  useEffect(() => {
+    const names = new Set();
+    Object.values(breakdownData).forEach((d) => {
+      (d?.breakdown || []).forEach((r) => {
+        if (r?.type === "INGREDIENT") {
+          const nm = String(r.item || "").trim();
+          if (nm) names.add(nm);
+        }
+      });
+    });
+
+    const items = [...names].map((itemName) => ({ itemName }));
+    if (items.length === 0) return;
+
+    const run = async () => {
+      try {
+        const res = await api.post("/api/minimumpackage/lookup", { items });
+        const list = res.data?.items || [];
+        const map = {};
+        list.forEach((d) => {
+          const key = String(d.itemName || "").trim().toLowerCase();
+          if (!key) return;
+          map[key] = {
+            minPackQty: Number(d.minPackQty || 0),
+            minPackCost: Number(d.minPackCost || 0),
+            uom: d.uom || "",
+          };
+        });
+        setMinPackageMap(map);
+      } catch (err) {
+        console.error("Failed to lookup minimumpackage", err);
+        setMinPackageMap({});
+      }
+    };
+
+    run();
+  }, [breakdownData, api]);
+
+  // Recompute procurement for all dishes whenever inputs change
+  useEffect(() => {
+    if (!baseInventory) return;
+
+    const inv = JSON.parse(JSON.stringify(baseInventory));
+    const newProc = {};
+    const newOrderItems = [...orderItems];
+
+    orderItems.forEach((item, idx) => {
+      const data = breakdownData[idx];
+      if (!item.dish || !data?.breakdown) {
+        newProc[idx] = { rows: [], totalCost: 0 };
+        newOrderItems[idx].total = 0;
+        return;
+      }
+
+      const qtyMultiplier = Number(item.qty || 1);
+      const dishRows = [];
+      let dishTotalCost = 0;
+
+      data.breakdown.forEach((r) => {
+
+          // Do not calculate procurement for subrecipes
+          if (r.type === "SUBRECIPE") {
+            dishRows.push({
+              itemName: r.item,
+              type: r.type,
+              level: r.level || 0,
+              uom: r.uom,
+              requiredQty: null,
+              inventoryQty: "-",
+              minPackQty: "-",
+              minPackCost: "-",
+              procureQty: "-",
+            });
+            return;
+          }
+          const key = String(r.item || "")
+          .replace("SR:", "")
+          .trim()
+          .toLowerCase();
+          if (!key) return;
+
+          const invItem = inv[key] || {
+            availableQty: 0,
+            uom: r.uom || "",
+          };
+
+          const requiredQty = Number(r.qty || 0) * qtyMultiplier;
+          const inventoryQty = Number(invItem.availableQty || 0);
+          const pkg = minPackageMap[key] || {};
+          const minPackQty = Number(pkg.minPackQty || 0) || 1;
+          const minPackCost = Number(pkg.minPackCost || 0);
+
+          const stockUsed = Math.min(requiredQty, inventoryQty);
+          const netRequired = Math.max(requiredQty - stockUsed, 0);
+          const packets =
+            netRequired <= 0 ? 0 : Math.ceil(netRequired / minPackQty);
+          const procureQty = packets * minPackQty;
+          const newInventory = inventoryQty + procureQty - requiredQty;
+
+          invItem.availableQty = newInventory;
+          inv[key] = invItem;
+
+          // Total cost = sum of minPackCost of all ingredients (including subrecipe ingredients)
+          dishTotalCost += minPackCost;
+
+          dishRows.push({
+            itemName: r.item,
+            type: r.type,
+            level: r.level || 0,
+            uom: pkg.uom || invItem.uom || r.uom,
+            requiredQty,
+            inventoryQty,
+            minPackQty,
+            minPackCost,
+            procureQty,
+          });
+        });
+
+      newProc[idx] = {
+        rows: dishRows,
+        totalCost: Number(dishTotalCost.toFixed(2)),
+      };
+
+      const qty = Number(item.qty || 1);
+      const perDish = qty > 0 ? dishTotalCost / qty : dishTotalCost;
+      newOrderItems[idx].price = Number(perDish.toFixed(2));
+      newOrderItems[idx].total = Number(dishTotalCost.toFixed(2));
+    });
+
+    setProcurementByItem(newProc);
+    setOrderItems(newOrderItems);
+  }, [orderItems, breakdownData, baseInventory, minPackageMap, setOrderItems]);
 
   const updateItem = async (index, field, value) => {
     const updated = [...orderItems];
@@ -570,33 +715,9 @@ function OrderModal({ dishes, orderItems, setOrderItems, onClose, api, fetchFood
                     <div className="text-right font-semibold">₹{Number(item.total).toFixed(2)}</div>
                   </div>
 
-                  {/* COST BREAKDOWN - same as Calculate */}
-                  {item.dish && (
-                    <EditableBreakdown
-                      data={data}
-                      multiplier={item.qty}
-                      onBaseTotalChange={(rows) => {
-                        setTimeout(() => {
-                        setOrderItems(prev => {
-                          const copy = [...prev];
-                          const newBase = rows
-                            .filter((r) => Number(r.level || 0) === 0)
-                            .reduce((s, r) => s + (Number(r.cost) || 0), 0);
-                          copy[i].price = newBase;
-                          copy[i].total = newBase * copy[i].qty;
-                          copy[i].breakdown = rows.map(r => ({
-                            item: r.item,
-                            type: r.type,
-                            qty: Number(r.qty || 0) * Number(copy[i].qty || 0),
-                            cost: Number(r.cost || 0) * Number(copy[i].qty || 0),
-                            uom: r.uom,
-                            level: Number(r.level || 0)
-                          }));
-                          return copy;
-                        });
-                      },0);
-                      }}
-                    />
+                  {/* PROCUREMENT BREAKDOWN */}
+                  {item.dish && procurementByItem[i] && (
+                    <ProcurementBreakdown rows={procurementByItem[i].rows} />
                   )}
                 </div>
               );

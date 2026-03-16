@@ -20,6 +20,9 @@ import OrderDish from './pages/OrderDish'
 import VendorEligibility from './pages/VendorEligibility'
 import AdminDashboard from './pages/AdminDashboard'
 import AddRecipe from './pages/AddRecipe'
+import ClientInventory from "./pages/ClientInventory";
+import AddTrialRecipe from "./pages/AddTrialRecipe";
+import AddTrainingRecipe from "./pages/AddTrainingRecipe";
 function App() {
   return (
     <Router
@@ -51,6 +54,9 @@ function App() {
         <Route path="/vendor-eligibility" element={<VendorEligibility />}/>
         <Route path="/admin-dashboard" element={<AdminDashboard />}/>
         <Route path="/add-recipe" element={<AddRecipe />}/>
+        <Route path="/add-trial-recipe" element={<AddTrialRecipe />}/>
+        <Route path="/add-training-recipe" element={<AddTrainingRecipe />}/>
+        <Route path="/client-inventory" element={<ClientInventory />}/>
       </Routes>
     </Router>
   )

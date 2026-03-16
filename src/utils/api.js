@@ -35,6 +35,9 @@ export const fetchInventoryItems = (branchCode) =>
     params: { branchCode },
   });
 
+export const fetchClientInventory = (clientId) =>
+  api.get(`/api/inventory/${clientId}`);
+
 /* ---------- INGREDIENTS (optional if stored separately) ---------- */
 export const fetchIngredients = () =>
   api.get("/api/inventory/items");

@@ -437,6 +437,15 @@ export default function Dashboard() {
                   </button>
                 </div>
 
+                <div className="bg-white px-4 py-2 rounded-xl shadow cursor-pointer">
+                  <button
+                    onClick={() => navigate("/client-inventory")}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg"
+                  >
+                    Inventory
+                  </button>
+                </div>
+
                 <div className="relative">
                   <button
                     onClick={() => setShowOrders(true)}
