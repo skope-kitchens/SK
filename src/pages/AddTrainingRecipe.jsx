@@ -21,7 +21,7 @@ export default function AddTrainingRecipe() {
   const [brand, setBrand] = useState("");
   const [brandOptions, setBrandOptions] = useState([]);
   const [recipeName, setRecipeName] = useState("");
-  const [trialNameOptions, setTrialNameOptions] = useState([]);
+  const [nameOptions, setNameOptions] = useState([]);
   const [sopLink, setSopLink] = useState("");
   const [items, setItems] = useState([EMPTY_NODE()]);
   const [subRecipes, setSubRecipes] = useState([]);
@@ -63,20 +63,65 @@ export default function AddTrainingRecipe() {
     loadBrands();
   }, []);
 
+  // Strict sequential selection:
+  // TR1 => recipeName dropdown from Trial T3
+  // TR2 => recipeName dropdown from Training TR1
+  // TR3 => recipeName dropdown from Training TR2
   useEffect(() => {
-    const loadTrialNames = async () => {
+    const loadOptions = async () => {
       try {
-        const res = await api.get("/api/recipe-hierarchy/trial-names");
+        if (trainingCode === "TR1") {
+          const res = await api.get("/api/trial-recipes");
+          const list = res.data?.data || [];
+          const names = list
+            .filter((r) => r.trialCode === "T3")
+            .map((r) => r.recipeName)
+            .filter(Boolean);
+          setNameOptions(Array.from(new Set(names)).sort((a, b) => a.localeCompare(b)));
+          return;
+        }
+        const res = await api.get("/api/training-recipes");
         const list = res.data?.data || [];
-        setTrialNameOptions(list);
-        if (!recipeName && list.length) setRecipeName(list[0]);
-      } catch (e) {
-        console.error("Failed to load trial recipe names", e);
-        setTrialNameOptions([]);
+        const want = trainingCode === "TR2" ? "TR1" : "TR2";
+        const names = list
+          .filter((r) => r.trainingCode === want)
+          .map((r) => r.recipeName)
+          .filter(Boolean);
+        setNameOptions(Array.from(new Set(names)).sort((a, b) => a.localeCompare(b)));
+      } catch {
+        setNameOptions([]);
       }
     };
-    loadTrialNames();
-  }, []);
+    loadOptions();
+  }, [trainingCode]);
+
+  // Sequential versioning prefill:
+  // TR1 prefill from Trial T3, TR2 from TR1, TR3 from TR2 (same recipeName)
+  useEffect(() => {
+    const prefill = async () => {
+      const name = String(recipeName || "").trim();
+      if (!name) return;
+      try {
+        if (trainingCode === "TR1") {
+          const res = await api.get("/api/trial-recipes");
+          const list = res.data?.data || [];
+          const prev = list.find((r) => r.recipeName === name && r.trialCode === "T3");
+          if (prev?.items?.length) setItems(prev.items.map((i) => ({ ...i })));
+          return;
+        }
+
+        const res = await api.get("/api/training-recipes");
+        const list = res.data?.data || [];
+        const want = trainingCode === "TR2" ? "TR1" : "TR2";
+        const prev = list.find((r) => r.recipeName === name && r.trainingCode === want);
+        if (prev?.items?.length) setItems(prev.items.map((i) => ({ ...i })));
+        if (typeof prev?.sopLink === "string") setSopLink(prev.sopLink);
+      } catch {
+        // ignore
+      }
+    };
+    prefill();
+  }, [recipeName, trainingCode]);
 
   const saveRecipe = async () => {
     const payload = {
@@ -140,15 +185,12 @@ export default function AddTrainingRecipe() {
                 onChange={(e) => setRecipeName(e.target.value)}
                 className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
               >
-                {trialNameOptions.length === 0 ? (
-                  <option value="">Create Trial recipes first</option>
-                ) : (
-                  trialNameOptions.map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))
-                )}
+                <option value="">Select recipe</option>
+                {nameOptions.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
               </select>
             </div>
 

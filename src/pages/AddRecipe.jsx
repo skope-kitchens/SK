@@ -68,20 +68,48 @@ export default function AddRecipe() {
     loadBrands();
   }, []);
 
+  // Strict sequential selection: MAIN recipeName dropdown only from Training TR3
   useEffect(() => {
     const loadTrainingNames = async () => {
       try {
-        const res = await api.get("/api/recipe-hierarchy/training-names");
+        const res = await api.get("/api/training-recipes");
         const list = res.data?.data || [];
-        setTrainingNameOptions(list);
-        if (!recipeName && list.length) setRecipeName(list[0]);
+        const names = list
+          .filter((r) => r.trainingCode === "TR3")
+          .map((r) => r.recipeName)
+          .filter(Boolean);
+        const opts = Array.from(new Set(names)).sort((a, b) => a.localeCompare(b));
+        setTrainingNameOptions(opts);
       } catch (e) {
-        console.error("Failed to load training recipe names", e);
+        console.error("Failed to load training recipes", e);
         setTrainingNameOptions([]);
       }
     };
     loadTrainingNames();
   }, []);
+
+  // Sequential versioning prefill: MAIN prefill from Training TR3 (same recipeName)
+  useEffect(() => {
+    const prefill = async () => {
+      const name = String(recipeName || "").trim();
+      if (!name) return;
+      if (recipeType !== "MAIN") return;
+      try {
+        const res = await api.get("/api/training-recipes");
+        const list = res.data?.data || [];
+        const prev = list.find((r) => r.recipeName === name && r.trainingCode === "TR3");
+        if (prev?.items?.length) {
+          setItems(prev.items.map((i) => ({ ...i })));
+        }
+        if (typeof prev?.sopLink === "string") {
+          setSopLink(prev.sopLink);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    prefill();
+  }, [recipeName, recipeType]);
 
 
 

@@ -2,13 +2,17 @@ import { useEffect, useState } from "react";
 import api from "../utils/api";
 import { OrderRecipeBreakdown } from "./OrderDish";
 import { fetchFoodCost } from "../utils/costingapi";
+import { useNavigate } from "react-router-dom";
 
 import WalletPanel from "./WalletPanel";
 import ServiceChecklist from "./ServiceChecklist";
 
 const BrandDrawer = ({ brand, adminRole, onClose }) => {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
+  const [menus, setMenus] = useState([]);
+  const [loadingMenus, setLoadingMenus] = useState(false);
   const [dueAmount, setDueAmount] = useState("");
   const [dueReason, setDueReason] = useState("");
   const [showRecipesOrderId, setShowRecipesOrderId] = useState(null);
@@ -32,9 +36,26 @@ const BrandDrawer = ({ brand, adminRole, onClose }) => {
       }
     };
 
-    fetchOrders();
+    const fetchMenus = async () => {
+      setLoadingMenus(true);
+      try {
+        const res = await api.get(`/api/admin/menu-entries/${brand._id}`);
+        setMenus(res.data?.data || []);
+      } catch (err) {
+        console.error("Failed to fetch menus", err);
+        setMenus([]);
+      } finally {
+        setLoadingMenus(false);
+      }
+    };
 
-    const interval = setInterval(fetchOrders, 5000);
+    fetchOrders();
+    fetchMenus();
+
+    const interval = setInterval(() => {
+      fetchOrders();
+      fetchMenus();
+    }, 5000);
     return () => clearInterval(interval);
   }, [brand, isRecipeAdmin]);
 
@@ -305,6 +326,52 @@ const BrandDrawer = ({ brand, adminRole, onClose }) => {
                 ))}
               </div>
             )}
+
+            <div className="mt-8">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  Menu
+                  {menus.some((m) => m.isSeenByRecipeAdmin === false) && (
+                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-blue-500 ring-2 ring-blue-200" />
+                  )}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    // deep-link open indent request modal
+                    onClose?.();
+                    navigate("/admin-dashboard?indent=1");
+                  }}
+                  className="text-sm text-blue-600 hover:underline"
+                >
+                  Make Indent Request
+                </button>
+              </div>
+              {loadingMenus ? (
+                <p className="text-gray-500 text-sm">Loading menu…</p>
+              ) : menus.length === 0 ? (
+                <p className="text-gray-500 text-sm">No menu entries yet</p>
+              ) : (
+                <div className="space-y-4">
+                  {menus.map((m) => (
+                    <div key={m._id} className="border rounded-lg p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <div className="text-sm text-gray-600">
+                          {m.createdAt ? new Date(m.createdAt).toLocaleString() : "—"}
+                        </div>
+                      </div>
+                      <ul className="text-sm text-gray-700">
+                        {(m.items || []).map((it, idx) => (
+                          <li key={idx}>
+                            {it.qty} × {it.recipeName} — ₹{Number(it.cost || 0).toFixed(2)}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

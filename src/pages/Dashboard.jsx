@@ -58,6 +58,10 @@ export default function Dashboard() {
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
 
+  const [showEnterMenu, setShowEnterMenu] = useState(false);
+  const [menuRows, setMenuRows] = useState([{ recipeName: "", qty: 1, cost: 0 }]);
+  const [menuSaving, setMenuSaving] = useState(false);
+
 
   /* ---------------- TOKEN ---------------- */
   function getTokenSafely() {
@@ -434,6 +438,15 @@ export default function Dashboard() {
                     className="bg-green-600 text-white px-4 py-2 rounded-lg"
                   >
                     Projection
+                  </button>
+                </div>
+
+                <div className="bg-white px-4 py-2 rounded-xl shadow cursor-pointer">
+                  <button
+                    onClick={() => setShowEnterMenu(true)}
+                    className="bg-purple-600 text-white px-4 py-2 rounded-lg"
+                  >
+                    Enter Menu
                   </button>
                 </div>
 
@@ -888,7 +901,140 @@ export default function Dashboard() {
         </div>
       </div>
 
-
+      {/* ENTER MENU MODAL */}
+      {showEnterMenu && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-2xl w-[95vw] max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex justify-between items-center p-6 border-b">
+              <h2 className="text-2xl font-bold">Enter Menu</h2>
+              <button
+                onClick={() => setShowEnterMenu(false)}
+                className="text-gray-500 hover:text-black text-2xl"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-6">
+              <div className="border rounded-lg overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="p-2 text-left">Recipe Name</th>
+                      <th className="p-2 text-right w-28">Qty</th>
+                      <th className="p-2 text-right w-40">Cost (₹)</th>
+                      <th className="p-2 w-16"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {menuRows.map((r, idx) => (
+                      <tr key={idx} className="border-t">
+                        <td className="p-2">
+                          <input
+                            value={r.recipeName}
+                            onChange={(e) =>
+                              setMenuRows((prev) => {
+                                const next = [...prev];
+                                next[idx] = { ...next[idx], recipeName: e.target.value };
+                                return next;
+                              })
+                            }
+                            className="w-full border rounded px-2 py-1 text-sm"
+                            placeholder="Recipe name"
+                          />
+                        </td>
+                        <td className="p-2 text-right">
+                          <input
+                            type="number"
+                            min={1}
+                            value={r.qty}
+                            onChange={(e) =>
+                              setMenuRows((prev) => {
+                                const next = [...prev];
+                                next[idx] = { ...next[idx], qty: Number(e.target.value || 1) };
+                                return next;
+                              })
+                            }
+                            className="w-20 border rounded px-2 py-1 text-sm text-right"
+                          />
+                        </td>
+                        <td className="p-2 text-right">
+                          <input
+                            type="number"
+                            step="0.01"
+                            min={0}
+                            value={r.cost}
+                            onChange={(e) =>
+                              setMenuRows((prev) => {
+                                const next = [...prev];
+                                next[idx] = { ...next[idx], cost: Number(e.target.value || 0) };
+                                return next;
+                              })
+                            }
+                            className="w-32 border rounded px-2 py-1 text-sm text-right"
+                          />
+                        </td>
+                        <td className="p-2 text-right">
+                          <button
+                            type="button"
+                            onClick={() => setMenuRows((prev) => prev.filter((_, i) => i !== idx))}
+                            className="text-red-600 hover:underline text-sm"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMenuRows((prev) => [...prev, { recipeName: "", qty: 1, cost: 0 }])}
+                className="mt-4 text-blue-600 text-sm hover:underline"
+              >
+                + Add Row
+              </button>
+            </div>
+            <div className="flex justify-end gap-3 p-4 border-t">
+              <button
+                type="button"
+                className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                onClick={() => setShowEnterMenu(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={menuSaving}
+                className="px-4 py-2 text-sm rounded-lg bg-black text-white disabled:opacity-50 hover:bg-gray-800"
+                onClick={async () => {
+                  const items = menuRows
+                    .map((row) => ({
+                      recipeName: String(row.recipeName || "").trim(),
+                      qty: Number(row.qty || 0),
+                      cost: Number(row.cost || 0),
+                    }))
+                    .filter((row) => row.recipeName && row.qty > 0);
+                  if (items.length === 0) return;
+                  try {
+                    setMenuSaving(true);
+                    await api.post("/api/menu-entries", { items });
+                    setShowEnterMenu(false);
+                    setMenuRows([{ recipeName: "", qty: 1, cost: 0 }]);
+                    alert("Menu saved");
+                  } catch (err) {
+                    alert(err.response?.data?.message || "Failed to save menu");
+                  } finally {
+                    setMenuSaving(false);
+                  }
+                }}
+              >
+                {menuSaving ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </Layout>
   );

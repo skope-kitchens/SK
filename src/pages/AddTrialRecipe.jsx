@@ -21,6 +21,7 @@ export default function AddTrialRecipe() {
   const [brand, setBrand] = useState("");
   const [brandOptions, setBrandOptions] = useState([]);
   const [recipeName, setRecipeName] = useState("");
+  const [trialNameOptions, setTrialNameOptions] = useState([]);
   const [items, setItems] = useState([EMPTY_NODE()]);
   const [subRecipes, setSubRecipes] = useState([]);
   const navigate = useNavigate();
@@ -60,6 +61,37 @@ export default function AddTrialRecipe() {
     };
     loadBrands();
   }, []);
+
+  // Strict sequential selection:
+  // T1 => new recipe name (manual)
+  // T2 => recipeName dropdown from T1
+  // T3 => recipeName dropdown from T2
+  useEffect(() => {
+    const prefill = async () => {
+      try {
+        const res = await api.get("/api/trial-recipes");
+        const list = res.data?.data || [];
+        if (trialCode === "T1") {
+          setTrialNameOptions([]);
+          return;
+        }
+        const want = trialCode === "T2" ? "T1" : "T2";
+        const names = list
+          .filter((r) => r.trialCode === want)
+          .map((r) => r.recipeName)
+          .filter(Boolean);
+        setTrialNameOptions(Array.from(new Set(names)).sort((a, b) => a.localeCompare(b)));
+
+        const name = String(recipeName || "").trim();
+        if (!name) return;
+        const prev = list.find((r) => r.recipeName === name && r.trialCode === want);
+        if (prev?.items?.length) setItems(prev.items.map((i) => ({ ...i })));
+      } catch (e) {
+        // ignore
+      }
+    };
+    prefill();
+  }, [trialCode, recipeName]);
 
   const saveRecipe = async () => {
     const payload = {
@@ -117,11 +149,26 @@ export default function AddTrialRecipe() {
               <label className="block text-sm text-gray-600 mb-1">
                 Recipe Name
               </label>
-              <input
-                value={recipeName}
-                onChange={(e) => setRecipeName(e.target.value)}
-                className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
-              />
+              {trialCode === "T1" ? (
+                <input
+                  value={recipeName}
+                  onChange={(e) => setRecipeName(e.target.value)}
+                  className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
+                />
+              ) : (
+                <select
+                  value={recipeName}
+                  onChange={(e) => setRecipeName(e.target.value)}
+                  className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
+                >
+                  <option value="">Select recipe</option>
+                  {trialNameOptions.map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <div>

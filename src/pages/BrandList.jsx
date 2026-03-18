@@ -74,6 +74,11 @@ const BrandList = ({ onSelectBrand, canManage = true }) => {
               {brand.hasNewOrder && (
                 <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-red-200" />
               )}
+
+              {/* 🔵 NEW MENU DOT */}
+              {!brand.hasNewOrder && brand.hasNewMenu && (
+                <span className="inline-block w-2.5 h-2.5 rounded-full bg-blue-500 ring-2 ring-blue-200" />
+              )}
             </div>
 
             <p className="text-sm text-gray-500">

@@ -17,7 +17,10 @@ const AdminDashboard = () => {
   const [showIngredientInventoryModal, setShowIngredientInventoryModal] = useState(false);
   const [showCreditNoteModal, setShowCreditNoteModal] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [showRecipeInventoryModal, setShowRecipeInventoryModal] = useState(false);
+  const [notifCounts, setNotifCounts] = useState(null);
   const navigate = useNavigate();
+  const search = typeof window !== "undefined" ? window.location.search : "";
 
   const adminRole = typeof window !== "undefined"
     ? localStorage.getItem("adminRole")
@@ -35,6 +38,32 @@ const AdminDashboard = () => {
 
   const hasMenuOptions = isRecipeManager || isIngredientManager;
   const canManageBrand = isWalletManager || isRecipeManager;
+
+  useEffect(() => {
+    if (!isRecipeManager && !isIngredientManager) return;
+    let cancelled = false;
+    const fetchCounts = async () => {
+      try {
+        const res = await api.get("/api/admin/notification-counts");
+        if (!cancelled) setNotifCounts(res.data?.data || null);
+      } catch {
+        if (!cancelled) setNotifCounts(null);
+      }
+    };
+    fetchCounts();
+    const id = setInterval(fetchCounts, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [isRecipeManager, isIngredientManager]);
+
+  useEffect(() => {
+    if (!isRecipeManager) return;
+    if (search.includes("indent=1")) {
+      setShowMapIngredientsModal(true);
+    }
+  }, [isRecipeManager, search]);
 
   return (
     <Layout>
@@ -127,7 +156,22 @@ const AdminDashboard = () => {
                           }}
                           className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
                         >
-                          GRN
+                          <span className="flex items-center justify-between">
+                            <span>GRN</span>
+                            {Number(notifCounts?.grn || 0) > 0 && (
+                              <span className="h-2 w-2 rounded-full bg-red-500" />
+                            )}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowMenu(false);
+                            setShowRecipeInventoryModal(true);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                        >
+                          Inventory
                         </button>
                         
                       </>
@@ -153,7 +197,12 @@ const AdminDashboard = () => {
                         }}
                         className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
                       >
-                        Inventory
+                        <span className="flex items-center justify-between">
+                          <span>Inventory</span>
+                          {Number(notifCounts?.indent || 0) > 0 && (
+                            <span className="h-2 w-2 rounded-full bg-red-500" />
+                          )}
+                        </span>
                       </button>
                     )}
                     {isIngredientManager && (
@@ -242,6 +291,13 @@ const AdminDashboard = () => {
         {/* Credit Note alerts for ingredient manager */}
         {isIngredientManager && showCreditNoteModal && (
           <CreditNoteModal onClose={() => setShowCreditNoteModal(false)} />
+        )}
+
+        {/* Recipe admin inventory */}
+        {isRecipeManager && showRecipeInventoryModal && (
+          <RecipeInventoryModal
+            onClose={() => setShowRecipeInventoryModal(false)}
+          />
         )}
 
         {/* GRN modal for recipe manager */}
@@ -915,13 +971,17 @@ function MapIngredientsModal({ onClose }) {
 
   const [stores, setStores] = useState([]);
   const [branchCode, setBranchCode] = useState("");
-  const [requestBrandName, setRequestBrandName] = useState("");
+  const [clientBrands, setClientBrands] = useState([]);
+  const [clientBrandId, setClientBrandId] = useState("");
+  const [clientBrandName, setClientBrandName] = useState("");
   const [inventoryItems, setInventoryItems] = useState([]);
   const [loadingInventory, setLoadingInventory] = useState(false);
 
   const emptyRow = () => ({
     skuCode: "",
     itemName: "",
+    customItemName: "",
+    ingredientBrand: "",
     categoryName: "",
     uom: "",
     qty: "",
@@ -965,6 +1025,24 @@ function MapIngredientsModal({ onClose }) {
     };
     loadStores();
   }, []);
+
+  useEffect(() => {
+  const loadBrands = async () => {
+    try {
+      const res = await api.get("/api/admin/brand-names");
+      const list = res.data?.data || [];
+      setClientBrands(list);
+
+      if (!clientBrandName && list.length) {
+        setClientBrandName(list[0]);
+      }
+    } catch (err) {
+      console.error("Failed to load brand names", err);
+      setClientBrands([]);
+    }
+  };
+  loadBrands();
+}, []);
 
   useEffect(() => {
     const fetchInventory = async () => {
@@ -1014,9 +1092,19 @@ function MapIngredientsModal({ onClose }) {
   };
 
   const onSelectIngredient = (index, itemName) => {
+    if (itemName === "__CUSTOM__") {
+      updateRow(index, {
+        itemName: "",
+        skuCode: "",
+        categoryName: "",
+        uom: "",
+      });
+      return;
+    }
     const match = inventoryItems.find((it) => it.name === itemName);
     updateRow(index, {
       itemName,
+      customItemName: "",
       skuCode: match?.skuCode || "",
       categoryName: match?.categoryName || "",
       uom: match?.measuringUnit || "",
@@ -1028,16 +1116,17 @@ function MapIngredientsModal({ onClose }) {
   const handleSave = async () => {
     if (!selectedRecipe?._id) return;
     if (!branchCode) return;
-    if (!requestBrandName.trim()) return;
+    if (!clientBrandName.trim()) return;
     const items = rows
       .map((r) => ({
         skuCode: r.skuCode,
-        itemName: r.itemName,
+        itemName: (r.itemName || r.customItemName || "").trim(),
+        ingredientBrand: String(r.ingredientBrand || "").trim(),
         categoryName: r.categoryName,
         uom: r.uom,
         qty: Number(r.qty || 0),
       }))
-      .filter((r) => r.itemName);
+      .filter((r) => r.itemName && r.ingredientBrand && r.uom && r.categoryName);
 
     setSaving(true);
     try {
@@ -1054,7 +1143,7 @@ function MapIngredientsModal({ onClose }) {
         recipeKind,
         recipeName: selectedRecipe.recipeName,
         branchCode,
-        requestBrandName: requestBrandName.trim(),
+        clientBrandName: clientBrandName.trim(),
         items,
       });
       onClose();
@@ -1158,15 +1247,23 @@ function MapIngredientsModal({ onClose }) {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Brand Name (required)
+                      Client Brand (required)
                     </label>
-                    <input
-                      type="text"
-                      value={requestBrandName}
-                      onChange={(e) => setRequestBrandName(e.target.value)}
+                    <select
+                      value={clientBrandName}
+                      onChange={(e) => setClientBrandName(e.target.value)}
                       className="w-full border rounded-lg px-3 py-2 text-sm"
-                      placeholder="Enter brand name for this indent"
-                    />
+                    >
+                      {clientBrands.length === 0 ? (
+                        <option value="">No brands</option>
+                      ) : (
+                        clientBrands.map((b) => (
+                          <option key={b} value={b}>
+                            {b}
+                          </option>
+                        ))
+                      )}
+                    </select>
                   </div>
                   <div className="text-sm text-gray-500 flex items-end">
                     {loadingInventory && branchCode ? "Loading inventory..." : ""}
@@ -1179,6 +1276,7 @@ function MapIngredientsModal({ onClose }) {
                       <tr>
                         <th className="p-2 text-left">Ingredient</th>
                         <th className="p-2 text-left">Category</th>
+                        <th className="p-2 text-left">Ing Brand</th>
                         <th className="p-2 text-left">UOM</th>
                         <th className="p-2 text-right w-28">Qty</th>
                       </tr>
@@ -1188,7 +1286,7 @@ function MapIngredientsModal({ onClose }) {
                         <tr key={idx} className="border-t">
                           <td className="p-2">
                             <select
-                              value={r.itemName}
+                              value={r.itemName || (r.customItemName ? "__CUSTOM__" : "")}
                               onChange={(e) => onSelectIngredient(idx, e.target.value)}
                               className="w-full border rounded px-2 py-1 text-sm"
                               disabled={!branchCode}
@@ -1196,15 +1294,67 @@ function MapIngredientsModal({ onClose }) {
                               <option value="">
                                 {branchCode ? "Select ingredient" : "Select branch first"}
                               </option>
+                              <option value="__CUSTOM__">Custom ingredient...</option>
                               {inventoryItems.map((it) => (
                                 <option key={it.skuCode || it.name} value={it.name}>
                                   {it.name}
                                 </option>
                               ))}
                             </select>
+                            {!r.itemName && (
+                              <input
+                                type="text"
+                                value={r.customItemName}
+                                onChange={(e) =>
+                                  updateRow(idx, { customItemName: e.target.value })
+                                }
+                                placeholder="Enter ingredient name"
+                                className="mt-2 w-full border rounded px-2 py-1 text-sm"
+                              />
+                            )}
                           </td>
-                          <td className="p-2">{r.categoryName || "—"}</td>
-                          <td className="p-2">{r.uom || "—"}</td>
+                          <td className="p-2">
+                            {/* category required for custom ingredients */}
+                            {r.itemName ? (
+                              <span>{r.categoryName || "—"}</span>
+                            ) : (
+                              <select
+                                value={r.categoryName || ""}
+                                onChange={(e) =>
+                                  updateRow(idx, { categoryName: e.target.value })
+                                }
+                                className="w-full border rounded px-2 py-1 text-sm"
+                              >
+                                <option value="">Select</option>
+                                <option value="Food">Food</option>
+                                <option value="Packaging">Packaging</option>
+                              </select>
+                            )}
+                          </td>
+                          <td className="p-2">
+                            <input
+                              type="text"
+                              value={r.ingredientBrand}
+                              onChange={(e) =>
+                                updateRow(idx, { ingredientBrand: e.target.value })
+                              }
+                              placeholder="e.g. Tata"
+                              className="w-full border rounded px-2 py-1 text-sm"
+                            />
+                          </td>
+                          <td className="p-2">
+                            <select
+                              value={r.uom || ""}
+                              onChange={(e) => updateRow(idx, { uom: e.target.value })}
+                              className="w-full border rounded px-2 py-1 text-sm"
+                            >
+                              <option value="">Select</option>
+                              <option value="ML">ml</option>
+                              <option value="GM">gm</option>
+                              <option value="PC">piece</option>
+                              <option value="KG">KG</option>
+                            </select>
+                          </td>
                           <td className="p-2 text-right">
                             <input
                               type="number"
@@ -1230,7 +1380,11 @@ function MapIngredientsModal({ onClose }) {
                   <button
                     type="button"
                     onClick={handleSave}
-                    disabled={saving || !branchCode || !requestBrandName.trim()}
+                    disabled={
+                      saving ||
+                      !branchCode ||
+                      !clientBrandName.trim()
+                    }
                     className="bg-black text-white px-4 py-2 rounded-lg text-sm disabled:opacity-50"
                   >
                     {saving ? "Saving..." : "Save Mapping"}
@@ -1252,7 +1406,6 @@ function IngredientInventoryModal({ onClose }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [verifyCosts, setVerifyCosts] = useState({});
-  const [verifyBrands, setVerifyBrands] = useState({});
 
   const fetchRows = async (activeTab) => {
     setLoading(true);
@@ -1284,8 +1437,7 @@ function IngredientInventoryModal({ onClose }) {
   const verify = async (id) => {
     try {
       const cost = verifyCosts[id];
-      const ingredientBrand = verifyBrands[id];
-      await api.patch(`/api/ingredient-indent/${id}/verify`, { cost, ingredientBrand });
+      await api.patch(`/api/ingredient-indent/${id}/verify`, { cost });
       await fetchRows("indent");
     } catch (err) {
       alert(err.response?.data?.message || "Verify failed");
@@ -1363,6 +1515,7 @@ function IngredientInventoryModal({ onClose }) {
               <thead className="bg-gray-100">
                 <tr>
                   <th className="p-2 text-left">Brand</th>
+                  <th className="p-2 text-left">Client</th>
                   <th className="p-2 text-left">Recipe</th>
                   <th className="p-2 text-left">Ingredient</th>
                   <th className="p-2 text-left">Ing Brand</th>
@@ -1376,13 +1529,13 @@ function IngredientInventoryModal({ onClose }) {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={9} className="p-4 text-center text-gray-500">
+                    <td colSpan={10} className="p-4 text-center text-gray-500">
                       Loading...
                     </td>
                   </tr>
                 ) : rows.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="p-4 text-center text-gray-500">
+                    <td colSpan={10} className="p-4 text-center text-gray-500">
                       No records.
                     </td>
                   </tr>
@@ -1390,6 +1543,7 @@ function IngredientInventoryModal({ onClose }) {
                   rows.map((r) => (
                     <tr key={r._id} className="border-t">
                       <td className="p-2">{r.requestBrandName || "—"}</td>
+                      <td className="p-2">{r.clientBrandName || "—"}</td>
                       <td className="p-2">
                         <div className="font-medium">{r.recipeName || "—"}</div>
                         <div className="text-xs text-gray-500">{r.branchCode}</div>
@@ -1428,18 +1582,6 @@ function IngredientInventoryModal({ onClose }) {
                                 }))
                               }
                               className="w-24 border rounded px-2 py-1 text-xs text-right"
-                            />
-                            <input
-                              type="text"
-                              placeholder="Ing brand"
-                              value={verifyBrands[r._id] ?? ""}
-                              onChange={(e) =>
-                                setVerifyBrands((prev) => ({
-                                  ...prev,
-                                  [r._id]: e.target.value,
-                                }))
-                              }
-                              className="w-28 border rounded px-2 py-1 text-xs"
                             />
                             <button
                               type="button"
@@ -2066,6 +2208,233 @@ function TrialTrainingModal({ onClose }) {
               <p className="text-gray-500">Select a recipe to edit.</p>
             )}
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- RECIPE ADMIN INVENTORY MODAL ---------- */
+function RecipeInventoryModal({ onClose }) {
+  const [brands, setBrands] = useState([]);
+  const [selectedBrand, setSelectedBrand] = useState("");
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [transfer, setTransfer] = useState({
+    fromBrandName: "",
+    toBrandName: "",
+    itemName: "",
+    ingredientBrand: "",
+    uom: "",
+    qty: "",
+  });
+
+  useEffect(() => {
+    const loadBrands = async () => {
+      try {
+        const res = await api.get("/api/admin/brand-names");
+        const list = res.data?.data || [];
+        setBrands(list);
+        if (!selectedBrand && list.length) setSelectedBrand(list[0]);
+      } catch {
+        setBrands([]);
+      }
+    };
+    loadBrands();
+  }, []);
+
+  const loadStock = async (brandName) => {
+    if (!brandName) return;
+    setLoading(true);
+    try {
+      const res = await api.get("/api/brand-stock", { params: { brandName } });
+      setRows(res.data?.data || []);
+    } catch {
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadStock(selectedBrand);
+  }, [selectedBrand]);
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl w-[95vw] max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="flex justify-between items-center p-6 border-b">
+          <h2 className="text-2xl font-bold">Inventory</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-black text-2xl"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="p-6 border-b flex flex-wrap gap-4 items-end">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Brand
+            </label>
+            <select
+              value={selectedBrand}
+              onChange={(e) => setSelectedBrand(e.target.value)}
+              className="border rounded-lg px-3 py-2 text-sm"
+            >
+              {brands.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-auto p-6">
+          <div className="border rounded-lg overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="p-2 text-left">Item</th>
+                  <th className="p-2 text-left">Ing Brand</th>
+                  <th className="p-2 text-left">UOM</th>
+                  <th className="p-2 text-right">Remaining</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={4} className="p-4 text-center text-gray-500">
+                      Loading...
+                    </td>
+                  </tr>
+                ) : rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="p-4 text-center text-gray-500">
+                      No stock.
+                    </td>
+                  </tr>
+                ) : (
+                  rows.map((r) => (
+                    <tr key={r._id} className="border-t">
+                      <td className="p-2">{r.itemName}</td>
+                      <td className="p-2">{r.ingredientBrand || "—"}</td>
+                      <td className="p-2">{r.uom || "—"}</td>
+                      <td className="p-2 text-right">
+                        {Number(r.qtyRemaining || 0)}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-6 border rounded-lg p-4">
+            <h3 className="font-semibold mb-3">Transfer Stock</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <select
+                value={transfer.fromBrandName}
+                onChange={(e) =>
+                  setTransfer((p) => ({ ...p, fromBrandName: e.target.value }))
+                }
+                className="border rounded px-3 py-2 text-sm"
+              >
+                <option value="">From brand</option>
+                {brands.map((b) => (
+                  <option key={b} value={b}>
+                    {b}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={transfer.toBrandName}
+                onChange={(e) =>
+                  setTransfer((p) => ({ ...p, toBrandName: e.target.value }))
+                }
+                className="border rounded px-3 py-2 text-sm"
+              >
+                <option value="">To brand</option>
+                {brands.map((b) => (
+                  <option key={b} value={b}>
+                    {b}
+                  </option>
+                ))}
+              </select>
+              <input
+                value={transfer.itemName}
+                onChange={(e) =>
+                  setTransfer((p) => ({ ...p, itemName: e.target.value }))
+                }
+                className="border rounded px-3 py-2 text-sm"
+                placeholder="Item name"
+              />
+              <input
+                value={transfer.ingredientBrand}
+                onChange={(e) =>
+                  setTransfer((p) => ({ ...p, ingredientBrand: e.target.value }))
+                }
+                className="border rounded px-3 py-2 text-sm"
+                placeholder="Ing brand (optional)"
+              />
+              <input
+                value={transfer.uom}
+                onChange={(e) =>
+                  setTransfer((p) => ({ ...p, uom: e.target.value }))
+                }
+                className="border rounded px-3 py-2 text-sm"
+                placeholder="UOM"
+              />
+              <input
+                type="number"
+                value={transfer.qty}
+                onChange={(e) =>
+                  setTransfer((p) => ({ ...p, qty: e.target.value }))
+                }
+                className="border rounded px-3 py-2 text-sm"
+                placeholder="Qty"
+              />
+            </div>
+            <div className="mt-3 flex justify-end">
+              <button
+                type="button"
+                className="bg-black text-white px-4 py-2 rounded-lg text-sm"
+                onClick={async () => {
+                  try {
+                    await api.post("/api/brand-stock/transfer", {
+                      ...transfer,
+                      qty: Number(transfer.qty || 0),
+                    });
+                    alert("Transferred");
+                    setTransfer({
+                      fromBrandName: "",
+                      toBrandName: "",
+                      itemName: "",
+                      ingredientBrand: "",
+                      uom: "",
+                      qty: "",
+                    });
+                    await loadStock(selectedBrand);
+                  } catch (err) {
+                    alert(err.response?.data?.message || "Transfer failed");
+                  }
+                }}
+              >
+                Transfer
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 p-4 border-t">
+          <button
+            type="button"
+            className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+            onClick={onClose}
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>
