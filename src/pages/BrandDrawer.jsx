@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../utils/api";
 import { OrderRecipeBreakdown } from "./OrderDish";
+import { fetchFoodCost } from "../utils/costingapi";
 
 import WalletPanel from "./WalletPanel";
 import ServiceChecklist from "./ServiceChecklist";
@@ -11,13 +12,13 @@ const BrandDrawer = ({ brand, adminRole, onClose }) => {
   const [dueAmount, setDueAmount] = useState("");
   const [dueReason, setDueReason] = useState("");
   const [showRecipesOrderId, setShowRecipesOrderId] = useState(null);
+  const [recipeBreakdowns, setRecipeBreakdowns] = useState({});
 
   const isWalletManager = adminRole === "WALLET_MANAGER";
-  const isOrderManager = adminRole === "ORDER_MANAGER";
-
+  const isRecipeAdmin = adminRole === "RECIPE_MANAGER";
   /* ================= FETCH ORDERS (ORDER MANAGER ONLY) ================= */
   useEffect(() => {
-    if (!brand?._id || !isOrderManager) return;
+    if (!brand?._id || !isRecipeAdmin) return;
 
     const fetchOrders = async () => {
       setLoadingOrders(true);
@@ -35,7 +36,44 @@ const BrandDrawer = ({ brand, adminRole, onClose }) => {
 
     const interval = setInterval(fetchOrders, 5000);
     return () => clearInterval(interval);
-  }, [brand, isOrderManager]);
+  }, [brand, isRecipeAdmin]);
+
+  useEffect(() => {
+    // reset modal state when switching brands
+    setShowRecipesOrderId(null);
+    setRecipeBreakdowns({});
+  }, [brand?._id]);
+
+  const fetchBreakdownFor = async (key, dishName) => {
+    setRecipeBreakdowns((prev) => {
+      if (prev[key]) return prev;
+      return { ...prev, [key]: { loading: true, data: null } };
+    });
+    try {
+      const result = await fetchFoodCost(dishName, 5, brand?.brandName);
+      setRecipeBreakdowns((prev) => ({
+        ...prev,
+        [key]: { loading: false, data: result },
+      }));
+    } catch (err) {
+      console.error("Failed to load recipe breakdown", err);
+      setRecipeBreakdowns((prev) => ({
+        ...prev,
+        [key]: { loading: false, data: null },
+      }));
+    }
+  };
+
+  useEffect(() => {
+    if (!showRecipesOrderId) return;
+    const order = orders.find((o) => o._id === showRecipesOrderId);
+    if (!order) return;
+    order.items.forEach((item, idx) => {
+      const key = `${order._id}:${idx}`;
+      fetchBreakdownFor(key, item.dish);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showRecipesOrderId]);
 
   /* ================= UPDATE ORDER STATUS ================= */
   const updateOrderStatus = async (orderId, status) => {
@@ -146,7 +184,7 @@ const BrandDrawer = ({ brand, adminRole, onClose }) => {
         )}
 
         {/* ================= ORDERS (ORDER MANAGER ONLY) ================= */}
-        {isOrderManager && (
+        {(adminRole === "RECIPE_MANAGER") && (
           <div className="mt-8">
             <h3 className="text-lg font-semibold mb-4">
               Orders
@@ -272,7 +310,7 @@ const BrandDrawer = ({ brand, adminRole, onClose }) => {
       </div>
 
       {/* RECIPES MODAL (same as client Calculate / order breakdown) */}
-      {isOrderManager && showRecipesOrderId && (() => {
+      {isRecipeAdmin && showRecipesOrderId && (() => {
         const order = orders.find((o) => o._id === showRecipesOrderId);
         if (!order) return null;
         return (
@@ -292,33 +330,35 @@ const BrandDrawer = ({ brand, adminRole, onClose }) => {
               </div>
               <ul className="space-y-6">
                 {order.items.map((item, idx) => {
-                  const rows = item.breakdown || [];
-                  const foodCost = rows
-                    .filter((b) => b.category === "Food")
-                    .reduce((s, b) => s + (Number(b.cost) || 0), 0);
-                  const packagingCost = rows
-                    .filter((b) => b.category === "Packaging")
-                    .reduce((s, b) => s + (Number(b.cost) || 0), 0);
-                  const total = foodCost + packagingCost;
-                  const data = rows.length
-                    ? { breakdown: rows, foodCost, packagingCost, total }
+                  const key = `${order._id}:${idx}`;
+                  const state = recipeBreakdowns[key];
+
+                  const stored = Array.isArray(item.breakdown) ? item.breakdown : [];
+                  const storedData = stored.length
+                    ? {
+                        breakdown: stored,
+                        foodCost: stored
+                          .filter((b) => b.category === "Food")
+                          .reduce((s, b) => s + (Number(b.cost) || 0), 0),
+                        packagingCost: stored
+                          .filter((b) => b.category === "Packaging")
+                          .reduce((s, b) => s + (Number(b.cost) || 0), 0),
+                        total: stored
+                          .reduce((s, b) => s + (Number(b.cost) || 0), 0),
+                      }
                     : null;
+
+                  const data = state?.data || storedData;
                   return (
                     <li key={idx} className="border rounded-lg p-4">
                       <p className="font-medium text-gray-800 mb-2">
                         {item.qty} × {item.dish}
                       </p>
-                      {data ? (
-                        <OrderRecipeBreakdown
-                          data={data}
-                          loading={false}
-                          multiplier={1}
-                        />
-                      ) : (
-                        <p className="text-xs text-gray-500">
-                          No breakdown data stored for this order.
-                        </p>
-                      )}
+                      <OrderRecipeBreakdown
+                        data={data}
+                        loading={Boolean(state?.loading)}
+                        multiplier={item.qty || 1}
+                      />
                     </li>
                   );
                 })}

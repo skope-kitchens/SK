@@ -19,6 +19,7 @@ export default function AddTrialRecipe() {
   const [recipeType, setRecipeType] = useState("MAIN");
   const [trialCode, setTrialCode] = useState("T1");
   const [brand, setBrand] = useState("");
+  const [brandOptions, setBrandOptions] = useState([]);
   const [recipeName, setRecipeName] = useState("");
   const [items, setItems] = useState([EMPTY_NODE()]);
   const [subRecipes, setSubRecipes] = useState([]);
@@ -45,6 +46,21 @@ export default function AddTrialRecipe() {
     loadSubRecipes();
   }, []);
 
+  useEffect(() => {
+    const loadBrands = async () => {
+      try {
+        const res = await api.get("/api/admin/brand-names");
+        const list = res.data?.data || [];
+        setBrandOptions(list);
+        if (!brand && list.length) setBrand(list[0]);
+      } catch (e) {
+        console.error("Failed to load brand names", e);
+        setBrandOptions([]);
+      }
+    };
+    loadBrands();
+  }, []);
+
   const saveRecipe = async () => {
     const payload = {
       brand,
@@ -67,11 +83,21 @@ export default function AddTrialRecipe() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <label className="block text-sm text-gray-600 mb-1">Brand</label>
-              <input
+              <select
                 value={brand}
                 onChange={(e) => setBrand(e.target.value)}
                 className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
-              />
+              >
+                {brandOptions.length === 0 ? (
+                  <option value="">No brands</option>
+                ) : (
+                  brandOptions.map((b) => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
+                  ))
+                )}
+              </select>
 
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Trials</label>

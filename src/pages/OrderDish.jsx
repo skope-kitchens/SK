@@ -107,7 +107,7 @@ export default function OrderDish() {
                 onClick={() => setShowOrderModal(true)}
                 className="bg-black text-white px-6 py-2 rounded-lg"
               >
-                Make Projection
+                Compute Sales Projection
               </button>
             </div>
           </div>

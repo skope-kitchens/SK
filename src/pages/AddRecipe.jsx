@@ -21,7 +21,10 @@ export default function AddRecipe() {
   const [recipeType, setRecipeType] = useState("MAIN"); 
   const [branchCode, setBranchCode] = useState("");
   const [brand, setBrand] = useState("");
+  const [brandOptions, setBrandOptions] = useState([]);
   const [recipeName, setRecipeName] = useState("");
+  const [trainingNameOptions, setTrainingNameOptions] = useState([]);
+  const [sopLink, setSopLink] = useState("");
   const [items, setItems] = useState([EMPTY_NODE()]);
   const [subRecipes, setSubRecipes] = useState([]);
   const navigate = useNavigate();
@@ -50,6 +53,36 @@ export default function AddRecipe() {
     loadSubRecipes();
   }, []);
 
+  useEffect(() => {
+    const loadBrands = async () => {
+      try {
+        const res = await api.get("/api/admin/brand-names");
+        const list = res.data?.data || [];
+        setBrandOptions(list);
+        if (!brand && list.length) setBrand(list[0]);
+      } catch (e) {
+        console.error("Failed to load brand names", e);
+        setBrandOptions([]);
+      }
+    };
+    loadBrands();
+  }, []);
+
+  useEffect(() => {
+    const loadTrainingNames = async () => {
+      try {
+        const res = await api.get("/api/recipe-hierarchy/training-names");
+        const list = res.data?.data || [];
+        setTrainingNameOptions(list);
+        if (!recipeName && list.length) setRecipeName(list[0]);
+      } catch (e) {
+        console.error("Failed to load training recipe names", e);
+        setTrainingNameOptions([]);
+      }
+    };
+    loadTrainingNames();
+  }, []);
+
 
 
 
@@ -57,6 +90,7 @@ export default function AddRecipe() {
   const payload = {
     brand,
     recipeName,
+    sopLink: recipeType === "MAIN" ? sopLink : "",
     items,
   };
 
@@ -81,11 +115,21 @@ export default function AddRecipe() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <label className="block text-sm text-gray-600 mb-1">Brand</label>
-              <input
+              <select
                 value={brand}
-                onChange={e => setBrand(e.target.value)}
+                onChange={(e) => setBrand(e.target.value)}
                 className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
-              />
+              >
+                {brandOptions.length === 0 ? (
+                  <option value="">No brands</option>
+                ) : (
+                  brandOptions.map((b) => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
+                  ))
+                )}
+              </select>
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Branch Code</label>
                 <input
@@ -102,11 +146,21 @@ export default function AddRecipe() {
               <label className="block text-sm text-gray-600 mb-1">
                 Recipe Name
               </label>
-              <input
+              <select
                 value={recipeName}
                 onChange={e => setRecipeName(e.target.value)}
                 className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
-              />
+              >
+                {trainingNameOptions.length === 0 ? (
+                  <option value="">Create Training recipes first</option>
+                ) : (
+                  trainingNameOptions.map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))
+                )}
+              </select>
             </div>
 
             <div>
@@ -128,6 +182,21 @@ export default function AddRecipe() {
             </div>
 
           </div>
+
+          {recipeType === "MAIN" && (
+            <div className="mt-4">
+              <label className="block text-sm text-gray-600 mb-1">
+                SOP Link (Google Drive)
+              </label>
+              <input
+                type="url"
+                value={sopLink}
+                onChange={(e) => setSopLink(e.target.value)}
+                placeholder="https://drive.google.com/..."
+                className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
+              />
+            </div>
+          )}
         </div>
 
         {/* INGREDIENTS CARD */}

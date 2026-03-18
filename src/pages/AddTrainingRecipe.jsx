@@ -19,7 +19,10 @@ export default function AddTrainingRecipe() {
   const [recipeType, setRecipeType] = useState("MAIN");
   const [trainingCode, setTrainingCode] = useState("TR1");
   const [brand, setBrand] = useState("");
+  const [brandOptions, setBrandOptions] = useState([]);
   const [recipeName, setRecipeName] = useState("");
+  const [trialNameOptions, setTrialNameOptions] = useState([]);
+  const [sopLink, setSopLink] = useState("");
   const [items, setItems] = useState([EMPTY_NODE()]);
   const [subRecipes, setSubRecipes] = useState([]);
   const navigate = useNavigate();
@@ -45,11 +48,42 @@ export default function AddTrainingRecipe() {
     loadSubRecipes();
   }, []);
 
+  useEffect(() => {
+    const loadBrands = async () => {
+      try {
+        const res = await api.get("/api/admin/brand-names");
+        const list = res.data?.data || [];
+        setBrandOptions(list);
+        if (!brand && list.length) setBrand(list[0]);
+      } catch (e) {
+        console.error("Failed to load brand names", e);
+        setBrandOptions([]);
+      }
+    };
+    loadBrands();
+  }, []);
+
+  useEffect(() => {
+    const loadTrialNames = async () => {
+      try {
+        const res = await api.get("/api/recipe-hierarchy/trial-names");
+        const list = res.data?.data || [];
+        setTrialNameOptions(list);
+        if (!recipeName && list.length) setRecipeName(list[0]);
+      } catch (e) {
+        console.error("Failed to load trial recipe names", e);
+        setTrialNameOptions([]);
+      }
+    };
+    loadTrialNames();
+  }, []);
+
   const saveRecipe = async () => {
     const payload = {
       brand,
       trainingCode,
       recipeName,
+      sopLink,
       items,
       recipeType,
     };
@@ -67,11 +101,21 @@ export default function AddTrainingRecipe() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <label className="block text-sm text-gray-600 mb-1">Brand</label>
-              <input
+              <select
                 value={brand}
                 onChange={(e) => setBrand(e.target.value)}
                 className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
-              />
+              >
+                {brandOptions.length === 0 ? (
+                  <option value="">No brands</option>
+                ) : (
+                  brandOptions.map((b) => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
+                  ))
+                )}
+              </select>
 
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Training</label>
@@ -91,11 +135,21 @@ export default function AddTrainingRecipe() {
               <label className="block text-sm text-gray-600 mb-1">
                 Recipe Name
               </label>
-              <input
+              <select
                 value={recipeName}
                 onChange={(e) => setRecipeName(e.target.value)}
                 className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
-              />
+              >
+                {trialNameOptions.length === 0 ? (
+                  <option value="">Create Trial recipes first</option>
+                ) : (
+                  trialNameOptions.map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))
+                )}
+              </select>
             </div>
 
             <div>
@@ -114,6 +168,19 @@ export default function AddTrainingRecipe() {
                 <option value="SUB">Sub Recipe</option>
               </select>
             </div>
+          </div>
+
+          <div className="mt-4">
+            <label className="block text-sm text-gray-600 mb-1">
+              SOP Link (Google Drive)
+            </label>
+            <input
+              type="url"
+              value={sopLink}
+              onChange={(e) => setSopLink(e.target.value)}
+              placeholder="https://drive.google.com/..."
+              className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
+            />
           </div>
         </div>
 

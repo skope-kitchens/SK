@@ -15,6 +15,7 @@ const AdminDashboard = () => {
   const [showIngredientsModal, setShowIngredientsModal] = useState(false);
   const [showInventoryModal, setShowInventoryModal] = useState(false);
   const [showIngredientInventoryModal, setShowIngredientInventoryModal] = useState(false);
+  const [showCreditNoteModal, setShowCreditNoteModal] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const navigate = useNavigate();
 
@@ -62,36 +63,6 @@ const AdminDashboard = () => {
                           type="button"
                           onClick={() => {
                             setShowMenu(false);
-                            navigate("/add-recipe");
-                          }}
-                          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
-                        >
-                          Add Recipe
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowMenu(false);
-                            setShowRecipesModal(true);
-                          }}
-                          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
-                        >
-                          Update Recipe
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowMenu(false);
-                            setShowMapIngredientsModal(true);
-                          }}
-                          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
-                        >
-                          Map Ingredients
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowMenu(false);
                             navigate("/add-trial-recipe");
                           }}
                           className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
@@ -112,11 +83,41 @@ const AdminDashboard = () => {
                           type="button"
                           onClick={() => {
                             setShowMenu(false);
+                            navigate("/add-recipe");
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                        >
+                          Add Final Recipe
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowMenu(false);
                             setShowTrialTrainingModal(true);
                           }}
                           className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
                         >
                           View Trial & Training
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowMenu(false);
+                            setShowMapIngredientsModal(true);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                        >
+                          Indent Request
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowMenu(false);
+                            setShowRecipesModal(true);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                        >
+                          Update Recipe
                         </button>
                         <button
                           type="button"
@@ -153,6 +154,18 @@ const AdminDashboard = () => {
                         className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
                       >
                         Inventory
+                      </button>
+                    )}
+                    {isIngredientManager && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowMenu(false);
+                          setShowCreditNoteModal(true);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                      >
+                        Credit Note
                       </button>
                     )}
                     {isIngredientManager && (
@@ -224,6 +237,11 @@ const AdminDashboard = () => {
           <IngredientInventoryModal
             onClose={() => setShowIngredientInventoryModal(false)}
           />
+        )}
+
+        {/* Credit Note alerts for ingredient manager */}
+        {isIngredientManager && showCreditNoteModal && (
+          <CreditNoteModal onClose={() => setShowCreditNoteModal(false)} />
         )}
 
         {/* GRN modal for recipe manager */}
@@ -577,6 +595,7 @@ function RecipesModal({ onClose }) {
   const [loadingList, setLoadingList] = useState(true);
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [items, setItems] = useState([]);
+  const [sopLink, setSopLink] = useState("");
   const [loadingRecipe, setLoadingRecipe] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -602,12 +621,14 @@ function RecipesModal({ onClose }) {
   const loadMainRecipe = async (recipeId) => {
     setSelectedRecipe(null);
     setItems([]);
+    setSopLink("");
     setLoadingRecipe(true);
     try {
       const res = await api.get(`/api/admin/recipes/${recipeId}`);
       const doc = res.data;
       setSelectedRecipe({ _id: doc._id, recipeName: doc.recipeName, brand: doc.brand, kind: TAB_MAIN });
       setItems(Array.isArray(doc.items) ? doc.items.map((i) => ({ ...i })) : []);
+      setSopLink(doc.sopLink || "");
     } catch (err) {
       console.error("Failed to load main recipe", err);
     } finally {
@@ -618,6 +639,7 @@ function RecipesModal({ onClose }) {
   const loadSubRecipe = async (id) => {
     setSelectedRecipe(null);
     setItems([]);
+    setSopLink("");
     setLoadingRecipe(true);
     try {
       const res = await api.get(`/api/admin/subrecipes/${id}`);
@@ -662,7 +684,7 @@ function RecipesModal({ onClose }) {
     if (!selectedRecipe) return;
     setSaving(true);
     try {
-      const payload = { items };
+      const payload = selectedRecipe.kind === TAB_MAIN ? { items, sopLink } : { items };
       if (selectedRecipe.kind === TAB_MAIN) {
         await api.put(`/api/admin/recipes/${selectedRecipe._id}`, payload);
       } else {
@@ -670,6 +692,7 @@ function RecipesModal({ onClose }) {
       }
       setSelectedRecipe(null);
       setItems([]);
+      setSopLink("");
     } catch (err) {
       console.error("Failed to save recipe", err);
     } finally {
@@ -757,6 +780,20 @@ function RecipesModal({ onClose }) {
                     </button>
                   </div>
                 </div>
+                {selectedRecipe.kind === TAB_MAIN && (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      SOP Link (Google Drive)
+                    </label>
+                    <input
+                      type="url"
+                      value={sopLink}
+                      onChange={(e) => setSopLink(e.target.value)}
+                      placeholder="https://drive.google.com/..."
+                      className="w-full border rounded-lg px-3 py-2 text-sm"
+                    />
+                  </div>
+                )}
                 <UpdateRecipeItemsTable
                   items={items}
                   onUpdate={updateItem}
@@ -864,16 +901,21 @@ function UpdateRecipeItemsTable({ items, onUpdate, onRemove, isSubRecipe }) {
 /* ---------- MAP INGREDIENTS MODAL ---------- */
 const MAP_TAB_MAIN = "main";
 const MAP_TAB_SUB = "sub";
+const MAP_TAB_TRIAL = "trial";
+const MAP_TAB_TRAINING = "training";
 
 function MapIngredientsModal({ onClose }) {
   const [tab, setTab] = useState(MAP_TAB_MAIN);
   const [mainList, setMainList] = useState([]);
   const [subList, setSubList] = useState([]);
+  const [trialList, setTrialList] = useState([]);
+  const [trainingList, setTrainingList] = useState([]);
   const [loadingList, setLoadingList] = useState(true);
   const [selectedRecipe, setSelectedRecipe] = useState(null);
 
   const [stores, setStores] = useState([]);
   const [branchCode, setBranchCode] = useState("");
+  const [requestBrandName, setRequestBrandName] = useState("");
   const [inventoryItems, setInventoryItems] = useState([]);
   const [loadingInventory, setLoadingInventory] = useState(false);
 
@@ -883,7 +925,6 @@ function MapIngredientsModal({ onClose }) {
     categoryName: "",
     uom: "",
     qty: "",
-    cost: "",
   });
 
   const [rows, setRows] = useState([emptyRow()]);
@@ -893,12 +934,16 @@ function MapIngredientsModal({ onClose }) {
     const fetchLists = async () => {
       setLoadingList(true);
       try {
-        const [mainRes, subRes] = await Promise.all([
+        const [mainRes, subRes, trialRes, trainingRes] = await Promise.all([
           api.get("/api/admin/recipes"),
           api.get("/api/admin/subrecipes"),
+          api.get("/api/trial-recipes"),
+          api.get("/api/training-recipes"),
         ]);
         setMainList(mainRes.data || []);
         setSubList(subRes.data || []);
+        setTrialList(trialRes.data?.data || []);
+        setTrainingList(trainingRes.data?.data || []);
       } catch (err) {
         console.error("Failed to load recipe lists", err);
       } finally {
@@ -943,8 +988,22 @@ function MapIngredientsModal({ onClose }) {
     fetchInventory();
   }, [branchCode]);
 
-  const list = tab === MAP_TAB_MAIN ? mainList : subList;
-  const recipeKind = tab === MAP_TAB_MAIN ? "main" : "sub";
+  const list =
+    tab === MAP_TAB_MAIN
+      ? mainList
+      : tab === MAP_TAB_SUB
+      ? subList
+      : tab === MAP_TAB_TRIAL
+      ? trialList
+      : trainingList;
+  const recipeKind =
+    tab === MAP_TAB_MAIN
+      ? "main"
+      : tab === MAP_TAB_SUB
+      ? "sub"
+      : tab === MAP_TAB_TRIAL
+      ? "trial"
+      : "training";
 
   const updateRow = (index, patch) => {
     setRows((prev) => {
@@ -969,6 +1028,7 @@ function MapIngredientsModal({ onClose }) {
   const handleSave = async () => {
     if (!selectedRecipe?._id) return;
     if (!branchCode) return;
+    if (!requestBrandName.trim()) return;
     const items = rows
       .map((r) => ({
         skuCode: r.skuCode,
@@ -976,7 +1036,6 @@ function MapIngredientsModal({ onClose }) {
         categoryName: r.categoryName,
         uom: r.uom,
         qty: Number(r.qty || 0),
-        cost: Number(r.cost || 0),
       }))
       .filter((r) => r.itemName);
 
@@ -995,6 +1054,7 @@ function MapIngredientsModal({ onClose }) {
         recipeKind,
         recipeName: selectedRecipe.recipeName,
         branchCode,
+        requestBrandName: requestBrandName.trim(),
         items,
       });
       onClose();
@@ -1030,6 +1090,18 @@ function MapIngredientsModal({ onClose }) {
             className={`px-6 py-3 font-medium ${tab === MAP_TAB_SUB ? "border-b-2 border-black text-black" : "text-gray-500"}`}
           >
             Sub Recipes
+          </button>
+          <button
+            onClick={() => { setTab(MAP_TAB_TRIAL); setSelectedRecipe(null); }}
+            className={`px-6 py-3 font-medium ${tab === MAP_TAB_TRIAL ? "border-b-2 border-black text-black" : "text-gray-500"}`}
+          >
+            Trial Recipes
+          </button>
+          <button
+            onClick={() => { setTab(MAP_TAB_TRAINING); setSelectedRecipe(null); }}
+            className={`px-6 py-3 font-medium ${tab === MAP_TAB_TRAINING ? "border-b-2 border-black text-black" : "text-gray-500"}`}
+          >
+            Training Recipes
           </button>
         </div>
 
@@ -1084,6 +1156,18 @@ function MapIngredientsModal({ onClose }) {
                       ))}
                     </select>
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Brand Name (required)
+                    </label>
+                    <input
+                      type="text"
+                      value={requestBrandName}
+                      onChange={(e) => setRequestBrandName(e.target.value)}
+                      className="w-full border rounded-lg px-3 py-2 text-sm"
+                      placeholder="Enter brand name for this indent"
+                    />
+                  </div>
                   <div className="text-sm text-gray-500 flex items-end">
                     {loadingInventory && branchCode ? "Loading inventory..." : ""}
                   </div>
@@ -1097,7 +1181,6 @@ function MapIngredientsModal({ onClose }) {
                         <th className="p-2 text-left">Category</th>
                         <th className="p-2 text-left">UOM</th>
                         <th className="p-2 text-right w-28">Qty</th>
-                        <th className="p-2 text-right w-28">Cost</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1130,15 +1213,6 @@ function MapIngredientsModal({ onClose }) {
                               onChange={(e) => updateRow(idx, { qty: e.target.value })}
                             />
                           </td>
-                          <td className="p-2 text-right">
-                            <input
-                              type="number"
-                              step="0.01"
-                              className="w-24 border rounded px-2 py-1 text-right text-sm"
-                              value={r.cost}
-                              onChange={(e) => updateRow(idx, { cost: e.target.value })}
-                            />
-                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -1156,7 +1230,7 @@ function MapIngredientsModal({ onClose }) {
                   <button
                     type="button"
                     onClick={handleSave}
-                    disabled={saving || !branchCode}
+                    disabled={saving || !branchCode || !requestBrandName.trim()}
                     className="bg-black text-white px-4 py-2 rounded-lg text-sm disabled:opacity-50"
                   >
                     {saving ? "Saving..." : "Save Mapping"}
@@ -1177,6 +1251,8 @@ function IngredientInventoryModal({ onClose }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [verifyCosts, setVerifyCosts] = useState({});
+  const [verifyBrands, setVerifyBrands] = useState({});
 
   const fetchRows = async (activeTab) => {
     setLoading(true);
@@ -1207,7 +1283,9 @@ function IngredientInventoryModal({ onClose }) {
 
   const verify = async (id) => {
     try {
-      await api.patch(`/api/ingredient-indent/${id}/verify`);
+      const cost = verifyCosts[id];
+      const ingredientBrand = verifyBrands[id];
+      await api.patch(`/api/ingredient-indent/${id}/verify`, { cost, ingredientBrand });
       await fetchRows("indent");
     } catch (err) {
       alert(err.response?.data?.message || "Verify failed");
@@ -1220,6 +1298,18 @@ function IngredientInventoryModal({ onClose }) {
       await fetchRows("indent");
     } catch (err) {
       alert(err.response?.data?.message || "Issue failed");
+    }
+  };
+
+  const deleteIssued = async (id) => {
+    if (!window.confirm("Delete this issued item? This cannot be undone.")) return;
+    try {
+      await api.delete(`/api/ingredient-indent/${id}`);
+      // optimistic remove + refresh (keeps list correct if filters change)
+      setRows((prev) => prev.filter((r) => r._id !== id));
+      await fetchRows("issue");
+    } catch (err) {
+      alert(err.response?.data?.message || "Delete failed");
     }
   };
 
@@ -1272,8 +1362,10 @@ function IngredientInventoryModal({ onClose }) {
             <table className="w-full text-sm">
               <thead className="bg-gray-100">
                 <tr>
+                  <th className="p-2 text-left">Brand</th>
                   <th className="p-2 text-left">Recipe</th>
                   <th className="p-2 text-left">Ingredient</th>
+                  <th className="p-2 text-left">Ing Brand</th>
                   <th className="p-2 text-left">Category</th>
                   <th className="p-2 text-left">UOM</th>
                   <th className="p-2 text-right">Qty</th>
@@ -1284,41 +1376,79 @@ function IngredientInventoryModal({ onClose }) {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="p-4 text-center text-gray-500">
+                    <td colSpan={9} className="p-4 text-center text-gray-500">
                       Loading...
                     </td>
                   </tr>
                 ) : rows.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="p-4 text-center text-gray-500">
+                    <td colSpan={9} className="p-4 text-center text-gray-500">
                       No records.
                     </td>
                   </tr>
                 ) : (
                   rows.map((r) => (
                     <tr key={r._id} className="border-t">
+                      <td className="p-2">{r.requestBrandName || "—"}</td>
                       <td className="p-2">
                         <div className="font-medium">{r.recipeName || "—"}</div>
                         <div className="text-xs text-gray-500">{r.branchCode}</div>
                       </td>
                       <td className="p-2">{r.itemName}</td>
+                      <td className="p-2">{r.ingredientBrand || "—"}</td>
                       <td className="p-2">{r.categoryName || "—"}</td>
                       <td className="p-2">{r.uom || "—"}</td>
                       <td className="p-2 text-right">{Number(r.qty || 0)}</td>
                       <td className="p-2 text-right">₹{Number(r.cost || 0).toFixed(2)}</td>
                       <td className="p-2 text-center">
                         {tab === "issue" ? (
-                          <span className="text-xs text-green-700 bg-green-50 border border-green-200 px-2 py-1 rounded">
-                            Issued
-                          </span>
+                          <div className="flex items-center justify-center gap-2">
+                            <span className="text-xs text-green-700 bg-green-50 border border-green-200 px-2 py-1 rounded">
+                              Issued
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => deleteIssued(r._id)}
+                              className="text-xs text-red-600 hover:underline"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         ) : r.status === "INDENT_PENDING" ? (
-                          <button
-                            type="button"
-                            onClick={() => verify(r._id)}
-                            className="bg-black text-white px-3 py-1.5 rounded text-xs hover:bg-gray-800"
-                          >
-                            Verify
-                          </button>
+                          <div className="flex items-center justify-center gap-2">
+                            <input
+                              type="number"
+                              step="0.01"
+                              placeholder="Cost"
+                              value={verifyCosts[r._id] ?? ""}
+                              onChange={(e) =>
+                                setVerifyCosts((prev) => ({
+                                  ...prev,
+                                  [r._id]: e.target.value,
+                                }))
+                              }
+                              className="w-24 border rounded px-2 py-1 text-xs text-right"
+                            />
+                            <input
+                              type="text"
+                              placeholder="Ing brand"
+                              value={verifyBrands[r._id] ?? ""}
+                              onChange={(e) =>
+                                setVerifyBrands((prev) => ({
+                                  ...prev,
+                                  [r._id]: e.target.value,
+                                }))
+                              }
+                              className="w-28 border rounded px-2 py-1 text-xs"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => verify(r._id)}
+                              className="bg-black text-white px-3 py-1.5 rounded text-xs hover:bg-gray-800"
+                            >
+                              Verify
+                            </button>
+                          </div>
                         ) : (
                           <div className="flex items-center justify-center gap-2">
                             <span className="text-xs text-blue-700 bg-blue-50 border border-blue-200 px-2 py-1 rounded">
@@ -1360,6 +1490,8 @@ function IngredientInventoryModal({ onClose }) {
 function GrnModal({ onClose }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [ingredientName, setIngredientName] = useState("");
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -1392,12 +1524,49 @@ function GrnModal({ onClose }) {
           </button>
         </div>
         <div className="flex-1 overflow-auto p-6">
+          <div className="mb-4 flex flex-wrap items-end gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Credit note alert (ingredient not issued on time)
+              </label>
+              <input
+                type="text"
+                value={ingredientName}
+                onChange={(e) => setIngredientName(e.target.value)}
+                placeholder="Enter ingredient name"
+                className="border rounded-lg px-3 py-2 text-sm w-80"
+              />
+            </div>
+            <button
+              type="button"
+              disabled={sending || !ingredientName.trim()}
+              onClick={async () => {
+                try {
+                  setSending(true);
+                  await api.post("/api/credit-notes", {
+                    ingredientName: ingredientName.trim(),
+                  });
+                  setIngredientName("");
+                  alert("Credit note alert sent to Ingredient Admin");
+                } catch (err) {
+                  alert(err.response?.data?.message || "Failed to send credit note");
+                } finally {
+                  setSending(false);
+                }
+              }}
+              className="bg-black text-white px-4 py-2 rounded-lg text-sm disabled:opacity-50"
+            >
+              {sending ? "Sending..." : "Send"}
+            </button>
+          </div>
           <div className="border rounded-lg overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-100">
                 <tr>
+                  <th className="p-2 text-left">Brand</th>
                   <th className="p-2 text-left">Recipe</th>
                   <th className="p-2 text-left">Ingredient</th>
+                  <th className="p-2 text-left">Ing Brand</th>
                   <th className="p-2 text-left">Category</th>
                   <th className="p-2 text-left">UOM</th>
                   <th className="p-2 text-right">Qty</th>
@@ -1408,24 +1577,26 @@ function GrnModal({ onClose }) {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="p-4 text-center text-gray-500">
+                    <td colSpan={9} className="p-4 text-center text-gray-500">
                       Loading...
                     </td>
                   </tr>
                 ) : rows.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="p-4 text-center text-gray-500">
+                    <td colSpan={9} className="p-4 text-center text-gray-500">
                       No issued ingredients.
                     </td>
                   </tr>
                 ) : (
                   rows.map((r) => (
                     <tr key={r._id} className="border-t">
+                      <td className="p-2">{r.requestBrandName || "—"}</td>
                       <td className="p-2">
                         <div className="font-medium">{r.recipeName || "—"}</div>
                         <div className="text-xs text-gray-500">{r.branchCode}</div>
                       </td>
                       <td className="p-2">{r.itemName}</td>
+                      <td className="p-2">{r.ingredientBrand || "—"}</td>
                       <td className="p-2">{r.categoryName || "—"}</td>
                       <td className="p-2">{r.uom || "—"}</td>
                       <td className="p-2 text-right">{Number(r.qty || 0)}</td>
@@ -1454,6 +1625,125 @@ function GrnModal({ onClose }) {
   );
 }
 
+/* ---------- CREDIT NOTE MODAL (Ingredient admin alerts) ---------- */
+function CreditNoteModal({ onClose }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const load = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await api.get("/api/credit-notes");
+      setRows(res.data?.data || []);
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to load credit notes");
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const remove = async (id) => {
+    if (!window.confirm("Delete this credit note alert?")) return;
+    try {
+      await api.delete(`/api/credit-notes/${id}`);
+      setRows((prev) => prev.filter((r) => r._id !== id));
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to delete credit note");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl w-[95vw] max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="flex justify-between items-center p-6 border-b">
+          <h2 className="text-2xl font-bold">Credit Note</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-black text-2xl"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="flex-1 overflow-auto p-6">
+          {error && (
+            <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              {error}
+            </div>
+          )}
+          <div className="border rounded-lg overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="p-2 text-left">Ingredient</th>
+                  <th className="p-2 text-left">Created At</th>
+                  <th className="p-2 text-center w-32">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={3} className="p-4 text-center text-gray-500">
+                      Loading...
+                    </td>
+                  </tr>
+                ) : rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="p-4 text-center text-gray-500">
+                      No credit note alerts.
+                    </td>
+                  </tr>
+                ) : (
+                  rows.map((r) => (
+                    <tr key={r._id} className="border-t">
+                      <td className="p-2">{r.ingredientName}</td>
+                      <td className="p-2">
+                        {r.createdAt ? new Date(r.createdAt).toLocaleString() : "—"}
+                      </td>
+                      <td className="p-2 text-center">
+                        <button
+                          type="button"
+                          onClick={() => remove(r._id)}
+                          className="text-sm text-red-600 hover:underline"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 p-4 border-t">
+          <button
+            type="button"
+            className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+            onClick={onClose}
+          >
+            Close
+          </button>
+          <button
+            type="button"
+            className="px-4 py-2 text-sm rounded-lg bg-black text-white hover:bg-gray-800 disabled:opacity-50"
+            onClick={load}
+            disabled={loading}
+          >
+            Refresh
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- TRIAL & TRAINING RECIPES MODAL ---------- */
 function TrialTrainingModal({ onClose }) {
   const TAB_TRIAL = "TRIAL";
@@ -1465,6 +1755,7 @@ function TrialTrainingModal({ onClose }) {
   const [loadingList, setLoadingList] = useState(true);
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [items, setItems] = useState([]);
+  const [trainingSopLink, setTrainingSopLink] = useState("");
   const [loadingRecipe, setLoadingRecipe] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -1492,6 +1783,7 @@ function TrialTrainingModal({ onClose }) {
   const loadTrialRecipe = async (id) => {
     setSelectedRecipe(null);
     setItems([]);
+    setTrainingSopLink("");
     setLoadingRecipe(true);
     try {
       const res = await api.get(`/api/trial-recipes/${id}`);
@@ -1513,6 +1805,7 @@ function TrialTrainingModal({ onClose }) {
   const loadTrainingRecipe = async (id) => {
     setSelectedRecipe(null);
     setItems([]);
+    setTrainingSopLink("");
     setLoadingRecipe(true);
     try {
       const res = await api.get(`/api/training-recipes/${id}`);
@@ -1524,10 +1817,39 @@ function TrialTrainingModal({ onClose }) {
         kind: TAB_TRAINING,
       });
       setItems(Array.isArray(doc.items) ? doc.items.map((i) => ({ ...i })) : []);
+      setTrainingSopLink(doc.sopLink || "");
     } catch (err) {
       console.error("Failed to load training recipe", err);
     } finally {
       setLoadingRecipe(false);
+    }
+  };
+
+  const deleteTrial = async (id) => {
+    if (!window.confirm("Delete this trial recipe? This cannot be undone.")) return;
+    try {
+      await api.delete(`/api/trial-recipes/${id}`);
+      setTrialList((prev) => prev.filter((r) => r._id !== id));
+      if (selectedRecipe?._id === id) {
+        setSelectedRecipe(null);
+        setItems([]);
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to delete trial recipe");
+    }
+  };
+
+  const deleteTraining = async (id) => {
+    if (!window.confirm("Delete this training recipe? This cannot be undone.")) return;
+    try {
+      await api.delete(`/api/training-recipes/${id}`);
+      setTrainingList((prev) => prev.filter((r) => r._id !== id));
+      if (selectedRecipe?._id === id) {
+        setSelectedRecipe(null);
+        setItems([]);
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to delete training recipe");
     }
   };
 
@@ -1566,10 +1888,14 @@ function TrialTrainingModal({ onClose }) {
       if (selectedRecipe.kind === TAB_TRIAL) {
         await api.put(`/api/trial-recipes/${selectedRecipe._id}`, payload);
       } else {
-        await api.put(`/api/training-recipes/${selectedRecipe._id}`, payload);
+        await api.put(`/api/training-recipes/${selectedRecipe._id}`, {
+          ...payload,
+          sopLink: trainingSopLink,
+        });
       }
       setSelectedRecipe(null);
       setItems([]);
+      setTrainingSopLink("");
     } catch (err) {
       console.error("Failed to save trial/training recipe", err);
     } finally {
@@ -1579,6 +1905,7 @@ function TrialTrainingModal({ onClose }) {
 
   const list = tab === TAB_TRIAL ? trialList : trainingList;
   const onSelect = tab === TAB_TRIAL ? loadTrialRecipe : loadTrainingRecipe;
+  const onDelete = tab === TAB_TRIAL ? deleteTrial : deleteTraining;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -1634,19 +1961,38 @@ function TrialTrainingModal({ onClose }) {
               <ul className="space-y-1">
                 {list.map((r) => (
                   <li key={r._id}>
-                    <button
-                      onClick={() => onSelect(r._id)}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-sm ${
+                    <div
+                      className={`flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm ${
                         selectedRecipe?._id === r._id
                           ? "bg-black text-white"
                           : "hover:bg-gray-100"
                       }`}
                     >
-                      {r.recipeName}
-                      {r.brand && (
-                        <span className="opacity-80 ml-1">({r.brand})</span>
-                      )}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => onSelect(r._id)}
+                        className="flex-1 text-left"
+                      >
+                        {r.recipeName}
+                        {r.brand && (
+                          <span className="opacity-80 ml-1">({r.brand})</span>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(r._id);
+                        }}
+                        className={`text-xs hover:underline ${
+                          selectedRecipe?._id === r._id
+                            ? "text-red-200"
+                            : "text-red-600"
+                        }`}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -1683,6 +2029,32 @@ function TrialTrainingModal({ onClose }) {
                     </button>
                   </div>
                 </div>
+                {selectedRecipe.kind === TAB_TRAINING && (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      SOP Link (Google Drive)
+                    </label>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <input
+                        type="url"
+                        value={trainingSopLink}
+                        onChange={(e) => setTrainingSopLink(e.target.value)}
+                        placeholder="https://drive.google.com/..."
+                        className="flex-1 min-w-[260px] border rounded-lg px-3 py-2 text-sm"
+                      />
+                      {trainingSopLink?.trim() && (
+                        <a
+                          href={trainingSopLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-sm text-blue-600 hover:underline"
+                        >
+                          Open SOP
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <UpdateRecipeItemsTable
                   items={items}
                   onUpdate={updateItem}
