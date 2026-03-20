@@ -11,6 +11,7 @@ export default defineConfig({
   },
   server: {
       allowedHosts: ['prep-ops.cluster-0.preview.emergentcf.cloud']
+        allowedHosts: true
     port: 3000,
     proxy: {
       '/api': {
