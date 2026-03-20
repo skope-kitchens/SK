@@ -10,13 +10,15 @@ export default defineConfig({
     },
   },
   server: {
-      allowedHosts: ['prep-ops.cluster-0.preview.emergentcf.cloud']
-        allowedHosts: true
+    allowedHosts: true,
     port: 3000,
     proxy: {
       '/api': {
         target: 'http://localhost:5002',
         changeOrigin: true
+      }
+    }
+  }
       }
     }
   }
