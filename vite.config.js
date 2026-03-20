@@ -4,6 +4,9 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [react()],
+  server: {
+  allowedHosts: ['prep-ops.cluster-0.preview.emergentcf.cloud']
+},
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
