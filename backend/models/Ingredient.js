@@ -15,6 +15,10 @@ const ingredientSchema = new mongoose.Schema({
     enum: ['PRODUCE', 'DAIRY', 'MEAT', 'SEAFOOD', 'BAKERY', 'DRY_GOODS', 'SPICES', 'BEVERAGES', 'PACKAGING', 'OTHER'],
     required: true
   },
+  brandId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Brand'
+  },
   baseUOM: {
     type: String,
     enum: ['KG', 'GM', 'LB', 'OZ', 'L', 'ML', 'PC', 'CASE', 'BOX'],
