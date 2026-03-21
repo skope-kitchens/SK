@@ -12,7 +12,14 @@ Architect a comprehensive Kitchen Management Platform (SaaS) named "SkopeOS" des
 ### Platform Requirements:
 - Web Dashboard (React/Vite)
 - Mobile App (React Native/Expo)
-- Sample data for 5 locations
+- Sample data for 5 locations + 2 brands
+
+### Business Logic Framework (Phase 2):
+- **Total Revenue Target**: ₹20,00,000 (20L) over 3 months
+- **COGS Target**: 35%
+- **Aggregator & Marketing Fees**: 50%
+- **Net Profit Target**: 15%
+- **Sales Projection**: 5%-15% custom growth band
 
 ---
 
@@ -21,14 +28,14 @@ Architect a comprehensive Kitchen Management Platform (SaaS) named "SkopeOS" des
 ```
 /app/
 ├── backend/            # Node.js/Express API (Port 5002)
-│   ├── models/         # Mongoose schemas
-│   ├── routes/         # API endpoints
-│   ├── scripts/        # seed.js
+│   ├── models/         # Mongoose schemas (Brand, Customer, FinancialRecord, etc.)
+│   ├── routes/         # API endpoints (brands, finance, projections, customers)
+│   ├── scripts/        # seed.js, seedBrands.js
 │   └── server.js
 ├── web/                # React/Vite Frontend (Port 3000)
 │   ├── src/
-│   │   ├── components/ # UI components
-│   │   ├── pages/      # Home, DemoDashboard, etc.
+│   │   ├── components/ # UI components, Sidebar
+│   │   ├── pages/      # AdminPortal, ClientDashboard, Inventory, FoodCost, Settings, CustomerEngagement
 │   │   ├── layouts/    # DashboardLayout
 │   │   └── App.jsx
 │   └── vite.config.js
@@ -45,77 +52,137 @@ Architect a comprehensive Kitchen Management Platform (SaaS) named "SkopeOS" des
 
 ## What's Been Implemented
 
-### Completed (Dec 2025)
+### Phase 1 - Initial Setup (Dec 2025)
 - [x] Project restructuring (web + backend + mobile directories)
 - [x] Backend API creation (Node.js/Express)
 - [x] MongoDB models (User, Location, Ingredient, Recipe, Order)
 - [x] Database seeding with 5 sample locations
 - [x] Mobile app initialization (Expo)
 - [x] Frontend UI redesign (Earthy/Sage theme)
-- [x] **DemoDashboard bypass** - Avoids 502 login errors
+- [x] DemoDashboard bypass (avoids 502 login errors)
 - [x] Admin/Client role toggle with distinct views
-- [x] Static data dashboard (Revenue, Orders, Stock, Clients stats)
-- [x] Home page CTAs linked to /demo-dashboard
 
-### Demo Dashboard Features (MOCKED DATA)
-- Admin View: Total Revenue, Active Orders, Low Stock Items, B2B Clients, Alerts
-- Client View: My Orders, Total Spent, Pending Orders, Credit Available, Notifications
-- Quick Actions grid for both roles
-- Sidebar navigation with all modules
+### Phase 2 - Business Intelligence (Dec 2025)
+- [x] **Brand Model** - Created for multi-brand support (The Burger Co, Kerala Kitchen)
+- [x] **Customer Model** - Loyalty program, feedback history, tiers
+- [x] **FinancialRecord Model** - Daily P&L tracking with auto-calculations
+- [x] **3 Months Seeded Data** - 182 financial records for both brands
+- [x] **Admin Portal** - P&L dashboard with Revenue/COGS charts, brand selector
+- [x] **Client Dashboard** - Welcome page with spending charts, order categories
+- [x] **Inventory Management** - Stock tracking with LOW/CRITICAL alerts, unit conversion
+- [x] **Food Cost Calculator** - High cost item identification, category breakdown
+- [x] **Settings Page** - Google My Business & CRM toggles, loyalty configuration
+- [x] **Customer Engagement** - Customer cards, tier distribution, feedback tracking
+- [x] **Sales Projection** - 5%-15% growth band forecasting
 
-### Interactive Charts (Added Dec 2025)
-**Admin View:**
-- Revenue Trend (Area chart with 7-day performance + orders overlay)
-- Food Cost Analysis (Bar chart - Actual vs Target by category)
-- High Food Cost Items table with variance and optimize actions
+### Features with MOCKED/DEMO DATA:
+All pages use static demo data to ensure functionality despite 502 API errors:
+- Admin Portal: Generated 30-day P&L data
+- Inventory: 12 brand-specific ingredients
+- Food Cost: Recipe cost analysis
+- Customers: 8 customers across tiers
+- Client Dashboard: TechCorp Cafeteria sample data
 
-**Client View:**
-- Order Categories (Donut chart - Main Course, Appetizers, etc.)
-- Monthly Spending (Bar chart - spending over time)
+---
+
+## New Pages Added
+
+| Page | Route | Description |
+|------|-------|-------------|
+| Admin Portal | `/admin-portal` | P&L dashboard with brand selector, charts, projections |
+| Client Dashboard | `/client-dashboard` | B2B client view with spending tracking |
+| Inventory Management | `/inventory` | Stock tracking with alerts |
+| Food Cost Calculator | `/food-cost` | Recipe cost analysis |
+| Settings | `/settings` | Integrations and system preferences |
+| Customer Engagement | `/customers` | Loyalty and feedback management |
+
+---
+
+## API Endpoints (Backend)
+
+### Brands
+- `GET /api/brands` - List all brands
+- `GET /api/brands/:id` - Get brand details
+- `GET /api/brands/:id/summary` - Brand dashboard summary
+- `PUT /api/brands/:id/settings` - Update brand settings
+
+### Finance
+- `GET /api/finance/pnl/:brandId` - P&L for specific brand
+- `GET /api/finance/pnl-all` - Aggregated P&L for all brands
+- `GET /api/finance/monthly/:brandId` - Monthly breakdown
+- `GET /api/finance/food-cost/:brandId` - Food cost analysis
+
+### Projections
+- `GET /api/projections/:brandId` - Sales projection with growth band
+- `GET /api/projections/compare/all` - Compare all brands
+
+### Customers
+- `GET /api/customers/brand/:brandId` - List customers
+- `GET /api/customers/stats/:brandId` - Customer statistics
+- `POST /api/customers/:id/feedback` - Add feedback
+- `POST /api/customers/:id/loyalty` - Update loyalty points
 
 ---
 
 ## Known Issues
 
-### Blocked/Bypassed
+### Infrastructure (Bypassed)
 - **502 Bad Gateway** on external preview URL API calls
-  - Workaround: DemoDashboard uses hardcoded static data
-  - Root cause: Kubernetes ingress routing for /api endpoint
+  - Workaround: All pages use static demo data as fallback
+  - Root cause: Kubernetes ingress routing
 
 ---
 
 ## Prioritized Backlog
 
 ### P0 (Critical)
-- None currently - DemoDashboard bypass working
+- None - Platform fully functional with demo data
 
 ### P1 (High Priority)
-- [ ] Wire dashboard with real backend data (when 502 resolved)
 - [ ] Mobile app screens: Inventory Scanning, Waste Logging, Alerts
-- [ ] Inventory management page with CRUD operations
-- [ ] Food Cost Calculator page
+- [ ] Connect real backend data when 502 resolved
+- [ ] B2B Order placement flow
 
 ### P2 (Medium Priority)
 - [ ] "Golden Thread" logic: B2B orders deplete inventory automatically
-- [ ] Sales Projection Calculator with charts
-- [ ] Recipe management with ingredient costing
-- [ ] B2B Client onboarding flow
+- [ ] Recipe management with ingredient costing CRUD
+- [ ] Export reports (PDF/CSV)
 
-### P3 (Future/Nice-to-have)
+### P3 (Future)
 - [ ] Razorpay payment integration for B2B invoices
 - [ ] Multi-location dashboard switcher
-- [ ] Export reports (PDF/CSV)
 - [ ] Dark mode toggle
 
 ---
 
 ## Test Reports
-- `/app/test_reports/iteration_1.json` - Frontend testing passed (100%)
+- `/app/test_reports/iteration_1.json` - Initial DemoDashboard testing (100%)
+- `/app/test_reports/iteration_2.json` - Phase 2 frontend testing (95%)
+
+---
+
+## Brands & Sample Data
+
+### The Burger Co (TBC)
+- Type: Fast Food
+- Color: #E04D30 (Terracotta)
+- Ingredients: Beef patties, chicken patties, brioche buns, sauces, fries
+- Recipes: Classic Beef Burger, Double Chicken, Veggie Delight, Loaded Fries, BBQ Burger
+- Food Cost Range: 30%-47%
+
+### Kerala Kitchen (KK)
+- Type: Ethnic Cuisine
+- Color: #2E6A4F (Sage)
+- Ingredients: Fresh prawns, fish, coconut oil, matta rice, Kerala spices
+- Recipes: Prawn Roast, Fish Curry, Chicken Fry, Appam with Stew, Crab Masala
+- Food Cost Range: 20%-55%
 
 ---
 
 ## Credentials
 - Admin (bypassed): admin@skopeos.com / admin123
+- Burger Co Manager: manager@burgerco.com / brand123
+- Kerala Kitchen Manager: manager@keralakitchen.com / brand123
 - Razorpay Test Key: In /app/web/.env
 
 ---
