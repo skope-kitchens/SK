@@ -1,0 +1,154 @@
+{
+  "theme": {
+    "primary": "light",
+    "rationale": "Food and kitchen management software heavily benefits from clean, bright environments to denote hygiene, clarity, and precision. A dark mode toggle should exist for night-shift operations or B2B client portal preferences."
+  },
+  "typography": {
+    "headings": {
+      "family": "Chivo",
+      "import": "@import url('https://fonts.googleapis.com/css2?family=Chivo:ital,wght@0,300..900;1,300..900&display=swap');",
+      "weights": ["300", "500", "800"],
+      "usage": "Use bold weights (800) with tight tracking (`tracking-tight`) for page titles and metrics. Use light weights (300) for large informational numbers.",
+      "styles": "text-slate-900 dark:text-slate-50 font-chivo"
+    },
+    "body": {
+      "family": "Figtree",
+      "import": "@import url('https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&display=swap');",
+      "weights": ["400", "500", "600"],
+      "usage": "For all tables, descriptions, form labels, and smaller UI text. High legibility for dense data.",
+      "styles": "text-slate-600 dark:text-slate-400 font-figtree leading-relaxed"
+    },
+    "mono": {
+      "family": "JetBrains Mono",
+      "usage": "Use strictly for order IDs, SKU numbers, monetary values, and inventory codes to ensure tabular alignment.",
+      "styles": "font-mono text-sm tracking-widest"
+    }
+  },
+  "colors": {
+    "archetype": "ORGANIC & EARTHY mixed with SWISS & HIGH-CONTRAST",
+    "palette": {
+      "background": {
+        "light": "#FDFCF8",
+        "dark": "#0A0A0A",
+        "description": "Warm bone white for light mode to reduce glare, pure obsidian for dark mode."
+      },
+      "surface": {
+        "light": "#FFFFFF",
+        "dark": "#121212",
+        "description": "Main card and panel backgrounds. Must use a sharp 1px border instead of drop shadows."
+      },
+      "border": {
+        "light": "#E8E6E1",
+        "dark": "#2A2A2A",
+        "description": "Subtle borders. The grid lines must be visible."
+      },
+      "primary": {
+        "hex": "#E04D30",
+        "description": "Burnt Orange / Terracotta. Appetizing and high-energy. Used for primary CTAs and alerts."
+      },
+      "secondary": {
+        "hex": "#2E6A4F",
+        "description": "Deep Sage Green. Used for success states, inventory health, and positive financial metrics."
+      },
+      "warning": {
+        "hex": "#D4A373",
+        "description": "Ochre/Mustard. Used for low stock or pending states."
+      },
+      "text": {
+        "primary": "#1A1B1E",
+        "secondary": "#6B7280",
+        "muted": "#9CA3AF"
+      }
+    },
+    "rules": [
+      "No default SaaS Blue. Rely heavily on grayscale with sharp pops of Terracotta (#E04D30) and Sage (#2E6A4F).",
+      "Hover states for primary buttons must be a lighter hue: hover:bg-[#F26348] hover:text-white.",
+      "Do NOT use complete transparent backgrounds for headers/dropdowns. Use bg-white/80 with backdrop-blur-xl."
+    ]
+  },
+  "layouts": {
+    "strategy": "High Density Dashboard Grid (Mode B)",
+    "container": "w-full max-w-[1600px] mx-auto p-4 md:p-8",
+    "dashboard_grid": {
+      "base": "grid grid-cols-1 md:grid-cols-4 lg:grid-cols-12 gap-6",
+      "spans": {
+        "summary_widget": "col-span-1 md:col-span-2 lg:col-span-3",
+        "main_chart": "col-span-1 md:col-span-4 lg:col-span-8",
+        "side_feed": "col-span-1 md:col-span-4 lg:col-span-4"
+      }
+    },
+    "rules": [
+      "Avoid floating, heavily shadowed cards. Use sharp, cardless layouts with 1px border (`border border-border`) and no shadow.",
+      "Use `h-full` on children to ensure they stretch to match neighbors. No jagged bottoms.",
+      "Use generous inner padding (`p-6` or `p-8`) for widget containers to prevent text collision."
+    ]
+  },
+  "visual_enhancers": {
+    "surfaces": [
+      "Grid Borders: Expose the skeleton. Use `border-collapse` style for data-heavy sections.",
+      "Neumorphism (Tactile Variant): For toggles and small action buttons, use sharp 1px borders combined with subtle inner shadows."
+    ],
+    "shadows": "Minimal to none. Rely on 1px borders (`border-gray-200`) for definition. If shadow is necessary, use `shadow-sm` only."
+  },
+  "motion": {
+    "hover": "All interactive elements must have hover states. E.g., `-translate-y-[2px] shadow-sm`.",
+    "transitions": "Use specific properties: `transition-transform duration-200 ease-out, transition-colors duration-200 ease-out`. DO NOT use `transition-all`.",
+    "charts": "Animate chart mounting with a staggered Y-axis slide-in.",
+    "accessibility": "Respect `prefers-reduced-motion: reduce` for all animations."
+  },
+  "component_rules": {
+    "buttons": "Pill-shaped or slightly rounded (`rounded-md`). Do NOT use square buttons. Must include `data-testid`.",
+    "tables": "Dense rows (`py-2`). Left-align text, right-align monetary/number values. Use `font-mono` for IDs.",
+    "forms": "Use Shadcn Form components. Input backgrounds should be a very light gray (`bg-gray-50`) with a darker border on focus (`focus:border-primary focus:ring-1 focus:ring-primary`).",
+    "charts": "Use Recharts or Shadcn Charts. Customize colors to match the Earthy palette (Terracotta, Sage, Ochre, Charcoal).",
+    "cards": "Avoid Shadcn default Card if it looks too generic. Override with `border border-gray-200 shadow-none rounded-xl bg-white`.",
+    "toasts": "Use `sonner` located in `/app/src/components/ui/sonner.tsx`."
+  },
+  "media": {
+    "images": {
+      "rules": "Mobile height max `80vh`. Use object-cover for backgrounds.",
+      "auth_bg": "https://images.unsplash.com/photo-1767785990437-dfe1fe516fe8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA3MDB8MHwxfHNlYXJjaHwxfHxjaGVmJTIwY29va2luZyUyMHByb2Zlc3Npb25hbCUyMGNvbW1lcmNpYWwlMjBraXRjaGVufGVufDB8fHx8MTc3NDA3MTQ2NHww&ixlib=rb-4.1.0&q=85",
+      "landing_hero": "https://images.pexels.com/photos/5779775/pexels-photo-5779775.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "b2b_portal": "https://images.pexels.com/photos/4252781/pexels-photo-4252781.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    },
+    "icons": {
+      "library": "@phosphor-icons/react",
+      "installation": "yarn add @phosphor-icons/react",
+      "usage": "Use 'Duotone' weight for marketing/landing pages, and 'Regular' or 'Bold' weight for dense dashboards. NEVER use emojis as icons."
+    }
+  },
+  "3d_libraries": {
+    "recommendation": "Use Recharts for all standard financial and inventory data (Food Cost Calculator, Sales Projections). No heavy 3D required for dashboard to ensure snappy performance.",
+    "exceptions": "If a landing page is built, consider a lightweight Spline scene of a floating clipboard/tablet, otherwise stick to 2D for B2B efficiency."
+  },
+  "accessibility": {
+    "contrast": "Ensure text over Terracotta or Sage backgrounds meets APCA 3:1 contrast minimums. Use white text over #E04D30.",
+    "testing": "All interactive elements MUST include a `data-testid` attribute (e.g., `data-testid=\"login-submit-button\"`).",
+    "focus": "Focus states must have HIGHER contrast, not lower. E.g., `focus:ring-2 focus:ring-primary focus:ring-offset-2`."
+  },
+  "instructions_to_main_agent": [
+    "Read this file and apply the colors, typography, and grids precisely.",
+    "Run `yarn add @phosphor-icons/react sonner recharts` before building components.",
+    "DO NOT use generic centered layouts. Use asymmetrical or dense grid bento layouts.",
+    "Set up Tailwind config with the specified colors (primary: #E04D30, secondary: #2E6A4F) and fonts (Chivo, Figtree).",
+    "DO NOT apply `transition-all`. Use `transition-colors` or `transition-transform`.",
+    "Implement a multi-role structure (Admin, Chef, B2B) using conditional rendering and separate layout wrappers.",
+    "For the Analytics Dashboard, ensure charts (Recharts) use the Earthy palette, not default bright neon colors.",
+    "DO NOT use `text-align: center` on the main App wrapper."
+  ],
+  "universal_guidelines_for_main_agent": [
+    "You tend to converge toward generic, 'on distribution' outputs. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur) for sticky navs.",
+    "You MUST NOT apply universal transition. Eg: transition: all.",
+    "You MUST NOT center align the app container, ie do not add .App { text-align: center; } in the css file.",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style.",
+    "NEVER use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯📚🎭🎬🎪🎉🎊🎁🎀🎂🍰🎈🎨🎰💰💵💳🏦💎🪙💸🤑📊📈📉💹🔢🏆🥇 etc for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Components MUST use named exports (export const ComponentName = ...).",
+    "Pages MUST use default exports (export default function PageName() {...})."
+  ]
+}
