@@ -63,6 +63,16 @@ Architect a comprehensive Kitchen Management Platform (SaaS) named "SkopeOS" des
 - Quick Actions grid for both roles
 - Sidebar navigation with all modules
 
+### Interactive Charts (Added Dec 2025)
+**Admin View:**
+- Revenue Trend (Area chart with 7-day performance + orders overlay)
+- Food Cost Analysis (Bar chart - Actual vs Target by category)
+- High Food Cost Items table with variance and optimize actions
+
+**Client View:**
+- Order Categories (Donut chart - Main Course, Appetizers, etc.)
+- Monthly Spending (Bar chart - spending over time)
+
 ---
 
 ## Known Issues
