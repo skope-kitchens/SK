@@ -66,6 +66,7 @@ Architect a comprehensive Kitchen Management Platform (SaaS) named "SkopeOS" des
 - [x] **Brand Model** - Created for multi-brand support (The Burger Co, Kerala Kitchen)
 - [x] **Customer Model** - Loyalty program, feedback history, tiers
 - [x] **FinancialRecord Model** - Daily P&L tracking with auto-calculations
+- [x] **WasteLog Model** - Track waste by category, reason, ingredient
 - [x] **3 Months Seeded Data** - 182 financial records for both brands
 - [x] **Admin Portal** - P&L dashboard with Revenue/COGS charts, brand selector
 - [x] **Client Dashboard** - Welcome page with spending charts, order categories
@@ -74,6 +75,7 @@ Architect a comprehensive Kitchen Management Platform (SaaS) named "SkopeOS" des
 - [x] **Settings Page** - Google My Business & CRM toggles, loyalty configuration
 - [x] **Customer Engagement** - Customer cards, tier distribution, feedback tracking
 - [x] **Sales Projection** - 5%-15% growth band forecasting
+- [x] **Waste Logging Module** - Track food waste, analyze patterns, reduce COGS
 
 ### Features with MOCKED/DEMO DATA:
 All pages use static demo data to ensure functionality despite 502 API errors:
@@ -95,6 +97,7 @@ All pages use static demo data to ensure functionality despite 502 API errors:
 | Food Cost Calculator | `/food-cost` | Recipe cost analysis |
 | Settings | `/settings` | Integrations and system preferences |
 | Customer Engagement | `/customers` | Loyalty and feedback management |
+| Waste Logging | `/waste-logging` | Track food waste and patterns |
 
 ---
 
@@ -121,6 +124,13 @@ All pages use static demo data to ensure functionality despite 502 API errors:
 - `GET /api/customers/stats/:brandId` - Customer statistics
 - `POST /api/customers/:id/feedback` - Add feedback
 - `POST /api/customers/:id/loyalty` - Update loyalty points
+
+### Waste
+- `GET /api/waste/brand/:brandId` - Get waste logs with filters
+- `GET /api/waste/analytics/:brandId` - Waste analytics (by category, reason, trends)
+- `POST /api/waste` - Log new waste entry
+- `POST /api/waste/bulk` - Bulk log waste entries
+- `DELETE /api/waste/:id` - Delete waste entry
 
 ---
 

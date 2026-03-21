@@ -17,6 +17,7 @@ import brandRoutes from './routes/brands.js';
 import financeRoutes from './routes/finance.js';
 import projectionsRoutes from './routes/projections.js';
 import customerRoutes from './routes/customers.js';
+import wasteRoutes from './routes/waste.js';
 
 dotenv.config();
 
@@ -54,6 +55,7 @@ app.use('/api/brands', brandRoutes);
 app.use('/api/finance', financeRoutes);
 app.use('/api/projections', projectionsRoutes);
 app.use('/api/customers', customerRoutes);
+app.use('/api/waste', wasteRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
